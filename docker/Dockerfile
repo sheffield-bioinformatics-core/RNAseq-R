@@ -6,7 +6,7 @@ RUN apt-get install --fix-missing -y git
 ###Get repository of the course. Install data and R packages
 #RUN apt-get install -y sra-toolkit
 RUN mkdir -p /home/participant/
-RUN git clone https://github.com/bioinformatics-core-shared-training/RNAseq-R /home/participant/Course_Materials
+RUN git clone https://github.com/bioinformatics-core-shared-training/RNAseq-R.git /home/participant/Course_Materials
 RUN R -f /home/participant/Course_Materials/install_bioc_packages.R
 WORKDIR /tmp
 RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.3.zip -P /tmp
