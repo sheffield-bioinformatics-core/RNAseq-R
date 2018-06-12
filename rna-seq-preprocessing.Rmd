@@ -257,6 +257,20 @@ str(dgeObj)
 dgeObj$samples
 ```
 
+
+```{r}
+### Create a DESeq2 object
+library(DESeq2)
+
+dds <- DESeqDataSetFromMatrix(counts.keep,
+                              colData = sampleinfo,
+                              design = ~CellType)
+
+dds
+
+```
+
+
 ## Quality control
 
 Now that we have got rid of the lowly expressed genes and have our counts stored in a `DGEList` object, we can look at a few different plots to check that the data is good quality, and that the samples are as we would expect.
@@ -266,8 +280,7 @@ Now that we have got rid of the lowly expressed genes and have our counts stored
 First, we can check how many reads we have for each sample in the `dgeObj`.
 
 ```{r dgeLibrarySizes}
-dgeObj$samples[,2]
-dgeObj$samples[,"lib.size"]
+colSums(assay(dds))
 
 ```
 
@@ -277,9 +290,9 @@ We can also plot the library sizes as a barplot to see whether there are any maj
 
 # The names argument tells the barplot to use the sample names on the x-axis
 # The las argument rotates the axis names
-barplot(dgeObj$samples$lib.size, names=colnames(dgeObj), las=2, main="Barplot of library sizes")
+barplot(colSums(assay(dds)), names=colData(dds)$SampleName, las=2, main="Barplot of library sizes")
 abline(h=20e6, lty=2)
-
+colSums(assay(dds))
 ```
 
 Count data is not normally distributed, so if we want to examine the distributions of the raw counts we need to log the counts. Next we'll use box plots to check the distribution of the read counts on the log2 scale. We can use the `cpm` function to get log2 counts per million, which are corrected for the different library sizes. The `cpm` function also adds a small offset to avoid taking log of zero.  
@@ -293,6 +306,16 @@ boxplot(logcounts, xlab="", ylab="Log2 counts per million",las=2)
 abline(h=median(logcounts), col="blue", main="Boxplots of logCPMs (unnormalised)")
 ```
 
+```{r}
+# Get log2 counts per million
+vsd <- vst(dds,blind=TRUE)
+# Check distributions of samples using boxplots
+boxplot(assay(vsd), xlab="", ylab="Log2 counts per million",las=2)
+# Let's add a blue horizontal line that corresponds to the median logCPM
+abline(h=median(assay(vsd)), col="blue", main="Boxplots of logCPMs (unnormalised)")
+```
+
+
 From the boxplots we see that overall the density distributions of raw log-intensities are not identical but still not very different. If a sample is really far above or below the blue horizontal line we may need to investigate that sample further.
 
 > ## Discussion {.challenge}
@@ -301,43 +324,39 @@ From the boxplots we see that overall the density distributions of raw log-inten
 >
 
 
-### Multidimensional scaling plots
+### Heatmap of the sample-to-sample distances
 
-By far, one of the most important plots we make when we analyse RNA-Seq data are MDSplots. An MDSplot is a visualisation of a principle components analysis, which determines the greatest sources of variation in the data. A principle components analysis is an example of an unsupervised analysis, where we don't need to specify the groups. If your experiment is well controlled and has worked well, what we hope to see is that the greatest sources of variation in the data are the treatments/groups we are interested in. It is also an incredibly useful tool for quality control and checking for outliers. We can use the `plotMDS` function to create the MDS plot.
+> Another use of the transformed data is sample clustering. Here, we apply the dist function to the transpose of the transformed count matrix to get sample-to-sample distances.
 
-```{r plotMDSbasic}
-plotMDS(dgeObj)
+
+
+```{r}
+sampleDists <- dist(t(assay(vsd)))
 ```
 
-It is a bit difficult to see exactly what is going on with the default plot, although we do see samples grouping together in pairs. To make this plot more informative, we can colour the samples according to the grouping information. We can also change the labels, or instead of labels we can have points.
+> A heatmap of this distance matrix gives us an overview over similarities and dissimilarities between samples. We have to provide a hierarchical clustering hc to the heatmap function based on the sample distances, or else the heatmap function would calculate a clustering based on the distances between the rows/columns of the distance matrix.
 
-```{r setPlotParams}
-# Let's set up colour schemes for CellType
-# How many cell types and in what order are they stored?
-levels(sampleinfo$CellType)
-## Let's choose purple for basal and orange for luminal
-col.cell <- c("purple","orange")[sampleinfo$CellType]
-data.frame(sampleinfo$CellType,col.cell)
-col.cell
-sampleinfo$CellType
-
-# Similarly for status
-levels(sampleinfo$Status)
-col.status <- c("blue","red","dark green")[sampleinfo$Status]
-col.status
+```{r}
+library("RColorBrewer")
+library(pheatmap)
+sampleDistMatrix <- as.matrix(sampleDists)
+rownames(sampleDistMatrix) <- paste(vsd$CellType, vsd$Status, sep="-")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap(sampleDistMatrix,
+         clustering_distance_rows=sampleDists,
+         clustering_distance_cols=sampleDists,
+         col=colors)
 ```
 
-```{r plotMDScolored, fig.height=5, fig.width=10}
-# We specify the option to let us plot two plots side-by-sde
-par(mfrow=c(1,2))
-# Redo the MDS with cell type colouring
-plotMDS(dgeObj,col=col.cell, main="Cell type")
-# Let's add a legend to the plot so we know which colours correspond to which cell type
-legend("topleft",fill=c("purple","orange"),legend=levels(sampleinfo$CellType))
 
-plotMDS(dgeObj,col=col.status, main="Status")
-legend("topleft",fill=c("blue","red","dark green"),legend=levels(sampleinfo$Status))
 
+### Principal component plot of the samples
+
+Related to the distance matrix is the PCA plot, which shows the samples in the 2D plane spanned by their first two principal components. This type of plot is useful for visualizing the overall effect of experimental covariates and batch effects.
+
+```{r}
+plotPCA(vsd,intgroup=c("CellType"))
 ```
 
 > ## Discussion {.challenge}
