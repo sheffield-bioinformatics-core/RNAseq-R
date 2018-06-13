@@ -44,7 +44,7 @@ You should download these files and place them in your `/data` directory.
 
 ## Differential expression with edgeR
 
-Now that we are happy that we have normalised the data and that the quality looks good, we can continue to testing for differentially expressed genes. There are a number of packages to analyse RNA-Seq data. Most people use DESEQ2 or edgeR. We will use edgeR for the rest of this practical.
+Now that we are happy that we have normalised the data and that the quality looks good, we can continue to testing for differentially expressed genes. There are a number of packages to analyse RNA-Seq data. Most people use `DESeq2` or `edgeR`. We will use `DESeq2` for the rest of this practical.
 
 **First make sure we have all the objects and libraries loaded*
 
