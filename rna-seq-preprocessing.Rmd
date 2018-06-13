@@ -231,8 +231,8 @@ abline(v=0.5)
 > ## Challenge 1 {.challenge}
 >
 > 1. Plot the counts-per-million versus counts for the second sample.
-> 1. Add a vertical line at 0.5 and a horizontal line at 10.
-> 1. Add the lines again, colouring them blue
+> 2. Add a vertical line at 0.5 and a horizontal line at 10.
+> 3. Add the lines again, colouring them blue
 >
 > HINT: use the `col` parameter.
 >
@@ -242,21 +242,9 @@ abline(v=0.5)
 
 ```
 
-## Convert counts to DGEList object
+## Convert counts to DESeq2 object
 
-Next we'll create a `DGEList` object. This is an object used by *edgeR* to store count data. It has a number of slots for storing various parameters about the data.
-
-```{r makeDGEObj}
-dgeObj <- DGEList(counts.keep)
-# have a look at dgeObj
-dgeObj
-# See what slots are stored in dgeObj
-names(dgeObj)
-# Look at the structure of the list
-str(dgeObj)
-# Library size information is stored in the samples slot
-dgeObj$samples
-```
+Next we'll create a `DESeqDataSet` object. This is an object used by *DESeq2* to store count data. It has a number of slots for storing various parameters about the data.
 
 
 ```{r}
@@ -278,7 +266,7 @@ Now that we have got rid of the lowly expressed genes and have our counts stored
 
 ### Library sizes and distribution plots
 
-First, we can check how many reads we have for each sample in the `dgeObj`.
+First, we can check how many reads we have for each sample in the `DESeqDataSet`.
 
 ```{r dgeLibrarySizes}
 colSums(assay(dds))
@@ -298,14 +286,6 @@ colSums(assay(dds))
 
 Count data is not normally distributed, so if we want to examine the distributions of the raw counts we need to log the counts. Next we'll use box plots to check the distribution of the read counts on the log2 scale. We can use the `cpm` function to get log2 counts per million, which are corrected for the different library sizes. The `cpm` function also adds a small offset to avoid taking log of zero.  
 
-```{r plotLogCounts}
-# Get log2 counts per million
-logcounts <- cpm(dgeObj,log=TRUE)
-# Check distributions of samples using boxplots
-boxplot(logcounts, xlab="", ylab="Log2 counts per million",las=2)
-# Let's add a blue horizontal line that corresponds to the median logCPM
-abline(h=median(logcounts), col="blue", main="Boxplots of logCPMs (unnormalised)")
-```
 
 ```{r}
 # Get log2 counts per million
@@ -360,6 +340,13 @@ Related to the distance matrix is the PCA plot, which shows the samples in the 2
 plotPCA(vsd,intgroup=c("CellType"))
 ```
 
+> ## Challenge 2 {.challenge}
+>
+> 1. Rerun the plotPCA function and change the intgroup parameter so that both CellType and Status are shown on the plot.
+> HINT: check the documentation for the plotPCA function.
+>
+
+
 Another alternative is to generate an interactive MDS plot using the *Glimma* package. This allows the user to interactively explore the different dimensions.
 
 ```{r glimmaMDS}
@@ -372,12 +359,20 @@ glMDSPlot(dds, labels=labels, groups=group, folder="mds")
 *Glimma* was created to make interactive versions of some of the popular plots from the *limma* package. At present it can be used to obtain MDS plots and mean-difference (MD) plots, which will be covered later. The output of `glMDSPlot` is an html page (/mds/MDS-Plot.html) that shows the MDS plot on the left, and the amount of variation explained by each dimension in a barplot on the right. The user can hover over points to find out sample information, and switch between successive dimensions in the MDS plot by clicking on the bars in the barplot. The default MDS plots shows dimensions 1 and 2.
 
 
+
 > ## Discussion {.challenge}
 >
-> Look at the MDS plot coloured by cell type.
+> Look at the MDS plot and PCA coloured by cell type.
 > Is there something strange going on with the samples?
 > Identify the two samples that don't appear to be in the right place.
 >
+
+
+### Correcting the sample information
+
+Hopefully we have spotted a potential sample swap in the dataset. Such errors are not uncommon when handling 
+
+
 
 ```{r correctSampleSheet}
 # There is a sample info corrected file in your data directory
@@ -388,74 +383,3 @@ sampleinfo <- read.delim("data/SampleInfo_Corrected.txt")
 sampleinfo
 ```
 
-```{r plotMDSfixed, fig.height=5, fig.width=10}
-# Redo the MDSplot with corrected information
-par(mfrow=c(1,2))
-col.cell <- c("purple","orange")[sampleinfo$CellType]
-col.status <- c("blue","red","dark green")[sampleinfo$Status]
-
-plotMDS(dgeObj,col=col.cell, main="Cell type")
-legend("topleft",fill=c("purple","orange"),legend=levels(sampleinfo$CellType))
-
-plotMDS(dgeObj,col=col.status, main="Status")
-legend("topleft",fill=c("blue","red","dark green"),legend=levels(sampleinfo$Status))
-```
-
-The distance between each pair of samples in the MDS plot is calculated as the leading fold change, defined as the root-mean-square of the largest 500 log2-fold changes between that pair of samples. Replicate samples from the same group cluster together in the plot, while samples from different groups form separate clusters. This indicates that the differences between groups are larger than those within groups, i.e., differential expression is greater than the variance and can be detected. In the MDS plot, the distance between basal samples on the left and luminal cells on the right is about 6 units, corresponding to a leading fold change of about 64-fold (2^6 = 64) between basal and luminal. The expression differences between virgin, pregnant and lactating are greater for luminal cells than for basal.
-
-
-
-## Normalisation for composition bias
-
-The trimmed mean of M-values normalization method (TMM) is performed to eliminate composition biases between libraries [@robinson2010tmm]. This generates a set of normalization factors, where the product of these factors and the library sizes defines the effective library size. The `calcNormFactors` function in `edgeR` calculates the normalization factors between libraries. TMM normalisation (and most scaling normalisation methods) scale relative to one sample.
-
-```{r calcNormFactors}
-# Apply normalisation to DGEList object
-dgeObj <- calcNormFactors(dgeObj)
-```
-
-This will update the normalisation factors in the `DGEList` object (their default values are 1). Take a look at the normalisation factors for these samples.
-
-```{r vizNormFactors}
-dgeObj$samples
-```
-
-The normalization factors multiply to unity across all libraries. A normalization factor below one indicates that the library size will be scaled down, as there is more suppression (i.e., composition bias) in that library relative to the other libraries. This is also equivalent to scaling the counts upwards in that sample. Conversely, a factor above one scales up the library size and is equivalent to downscaling the counts.
-
-
-The last two samples have much smaller normalisation factors, and MCL1.LA and MCL1.LB have the largest. If we plot mean difference plots using the `plotMD` function for these samples, we should be able to see the composition bias problem. We will use the `logcounts`, which have been normalised for library size, but not for composition bias.
-
-```{r plotRawMD, fig.height=5, fig.width=10}
-par(mfrow=c(1,2))
-plotMD(logcounts,column = 7)
-abline(h=0,col="grey")
-plotMD(logcounts,column = 11)
-abline(h=0,col="grey")
-```
-
-The mean-difference plots show average expression (mean: x-axis) against log-fold-changes (difference: y-axis).
-Because our `DGEList` object contains the normalisation factors, if we redo these plots using `dgeObj`, we should see the composition bias problem has been solved.
-
-```{r plotNormedMD, fig.height=5, fig.width=10}
-par(mfrow=c(1,2))
-plotMD(dgeObj,column = 7)
-abline(h=0,col="grey")
-plotMD(dgeObj,column = 11)
-abline(h=0,col="grey")
-```
-
-> ## Challenge 4 {.challenge}
->
-> Plot the biased and unbiased MD plots side by side for the same sample to see the before and after TMM normalisation effect.
->
-
-**Solution**
-```{r solutionChallenge4, echo=FALSE, fig.height=5, fig.width=10}
-
-```
-
-**We need to save a few data objects to use for Day 2 so we don't have to rerun everything**
-
-```{r saveData}
-save(group,dgeObj,sampleinfo,file="Robjects/preprocessing.Rdata")
-```
