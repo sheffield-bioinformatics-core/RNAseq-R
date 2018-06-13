@@ -140,3 +140,8 @@ results <- results(de)
 results
 ```
 
+```{r}
+results.ordered <- results[order(results$padj,decreasing = FALSE),]
+results.ordered
+```
+
