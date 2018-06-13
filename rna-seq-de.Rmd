@@ -27,6 +27,7 @@ Based on the course [RNAseq analysis in R](http://combine-australia.github.io/20
 This material has been created using the following resources:  
 http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
 http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
+http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
 
 Data files downloaded from:  
 ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE60nnn/GSE60450/suppl/GSE60450_Lactation-GenewiseCounts.txt.gz
@@ -42,13 +43,14 @@ mouse_H_v5.rdata
 Data files available from: [https://figshare.com/s/1d788fd384d33e913a2a](https://figshare.com/s/1d788fd384d33e913a2a)
 You should download these files and place them in your `/data` directory.
 
-## Differential expression with edgeR
+## Differential expression with `DESeq2`
 
 Now that we are happy that we have normalised the data and that the quality looks good, we can continue to testing for differentially expressed genes. There are a number of packages to analyse RNA-Seq data. Most people use `DESeq2` or `edgeR`. We will use `DESeq2` for the rest of this practical.
 
 **First make sure we have all the objects and libraries loaded*
 
 ```{r}
+library(DESeq2)
 library(edgeR)
 library(limma)
 library(Glimma)
@@ -98,6 +100,7 @@ dds <- DESeqDataSetFromMatrix(counts.keep,
 ### The design matrix
 
 ```{r}
+
 group <- colData(dds)$CellType
 
 design <- model.matrix(~0+as.factor(group))
@@ -133,15 +136,22 @@ design(dds)
 de <- DESeq(dds)
 ```
 
-The results of the analysis can be obtained using the `results` function and displayed
+The results of the analysis can be obtained using the `results` function and displayed to the screen. Each row is a particular gene measured in the study (i.e. all genes in the organism being studies) and each column reports some aspect of the differential expression analysis for that gene. Note that all genes are reported. Not all genes will be statistically significant. At this stage the gene identifiers are not very informative, something we will fix in the next section. We also cannot easily identify genes that are differentially expressed.
 
 ```{r}
 results <- results(de)
 results
+
 ```
 
-```{r}
-results.ordered <- results[order(results$padj,decreasing = FALSE),]
-results.ordered
-```
+> ## Challenge 1 {.challenge}
+>
+> 1. How many genes have an adjusted p-value less than 0.05?
+> 2. Produce a new version of the results table, where the rows are ordered according to adjusted p-value
+> 3. Write this new data frame to a `.csv` file
+>
+
+
+### Fitting alternative models to the data
+
 
