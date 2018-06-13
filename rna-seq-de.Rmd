@@ -52,10 +52,6 @@ Now that we are happy that we have normalised the data and that the quality look
 ```{r}
 library(DESeq2)
 library(edgeR)
-library(limma)
-library(Glimma)
-library(gplots)
-library(org.Mm.eg.db)
 load("Robjects/preprocessing.Rdata")
 ```
 
@@ -108,29 +104,12 @@ design
 
 ```
 
-### Estimating *size factors*
-
-```{r}
-colData(dds)
-dds.sizeCorrected <- estimateSizeFactors(dds)
-colData(dds.sizeCorrected)
-```
-
-
-### Estimating *dispersion*
-
-```{r}
-dds.dispersions <- estimateDispersions(dds.sizeCorrected)
-rowData(dds.dispersions)
-```
-
 
 ### Differential Expression with DESeq2
 
 In `DESeq2`, a differential expression analysis can be performed by using the `DESeq` function. This function requires a single parameter which is the `DESeqDataSet` object generated in the pre-processing steps describes. We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
 
-The function will automatically run the `estimateSizeFactors` and `estimateDispersions` functions described above; or skip these steps if they have already been run.
-
+The function runs a couple of processing steps automatically 
 ```{r}
 design(dds)
 de <- DESeq(dds)
@@ -154,4 +133,31 @@ results
 
 ### Fitting alternative models to the data
 
+`DESEq2` allows for more complicated models
+
+```{r}
+
+```
+
+### Estimating *size factors*
+
+```{r}
+colData(dds)
+dds.sizeCorrected <- estimateSizeFactors(dds)
+colData(dds.sizeCorrected)
+```
+
+
+### Estimating *dispersion*
+
+```{r}
+dds.dispersions <- estimateDispersions(dds.sizeCorrected)
+rowData(dds.dispersions)
+```
+
+### Saving objects
+
+```{r}
+save(dds,results,file="Robjects/DE.Rdata")
+```
 
