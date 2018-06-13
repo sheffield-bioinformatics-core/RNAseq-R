@@ -351,13 +351,25 @@ pheatmap(sampleDistMatrix,
 
 
 
-### Principal component plot of the samples
+### Principal component (PCA) plot and Multi-Dimensional Scaling (MDS) of the samples
 
 Related to the distance matrix is the PCA plot, which shows the samples in the 2D plane spanned by their first two principal components. This type of plot is useful for visualizing the overall effect of experimental covariates and batch effects.
 
 ```{r}
 plotPCA(vsd,intgroup=c("CellType"))
 ```
+
+Another alternative is to generate an interactive MDS plot using the *Glimma* package. This allows the user to interactively explore the different dimensions.
+
+```{r glimmaMDS}
+labels <- paste(sampleinfo$SampleName, sampleinfo$CellType, sampleinfo$Status)
+group <- paste(sampleinfo$CellType,sampleinfo$Status,sep=".")
+group <- factor(group)
+glMDSPlot(dds, labels=labels, groups=group, folder="mds")
+```
+
+*Glimma* was created to make interactive versions of some of the popular plots from the *limma* package. At present it can be used to obtain MDS plots and mean-difference (MD) plots, which will be covered later. The output of `glMDSPlot` is an html page (/mds/MDS-Plot.html) that shows the MDS plot on the left, and the amount of variation explained by each dimension in a barplot on the right. The user can hover over points to find out sample information, and switch between successive dimensions in the MDS plot by clicking on the bars in the barplot. The default MDS plots shows dimensions 1 and 2.
+
 
 > ## Discussion {.challenge}
 >
@@ -388,116 +400,9 @@ plotMDS(dgeObj,col=col.status, main="Status")
 legend("topleft",fill=c("blue","red","dark green"),legend=levels(sampleinfo$Status))
 ```
 
-> ## Discussion {.challenge}
->
-> What is the greatest source of variation in the data (i.e. what does dimension 1 represent)?
-> What is the second greatest source of variation in the data?
->
-
-> ## Challenge 2 {.challenge}
->
-> 1. Redo the plots choosing your own colours.
-> 2. Change the plotting character to a symbol instead of the column names  
-> HINT: use `pch` (**p**lotting **ch**aracters) argument. Try `pch=16` and see what happens.
-> 3. Change the plotting characters such that basal samples have the value `1` and luminal samples have the value `4` and colour the points by status (lactate, pregnant, virgin)
->
-
-**Solution**
-```{r solutionChallenge2, echo=FALSE}
-
-```
-
-
 The distance between each pair of samples in the MDS plot is calculated as the leading fold change, defined as the root-mean-square of the largest 500 log2-fold changes between that pair of samples. Replicate samples from the same group cluster together in the plot, while samples from different groups form separate clusters. This indicates that the differences between groups are larger than those within groups, i.e., differential expression is greater than the variance and can be detected. In the MDS plot, the distance between basal samples on the left and luminal cells on the right is about 6 units, corresponding to a leading fold change of about 64-fold (2^6 = 64) between basal and luminal. The expression differences between virgin, pregnant and lactating are greater for luminal cells than for basal.
 
-Notes
 
-* The MDS plot can be simply generated with `plotMDS(dgeObj)`. The additional code is purely for aesthetics, to improve the visualization of the groups.
-* Clustering in the MDS plot can be used to motivate changes to the design matrix in light of potential batch effects. For example, imagine that the first replicate of each group was prepared at a separate time from the second replicate. If the MDS plot showed separation of samples by time, it might be worthwhile including time in the down stream analysis to account for the time-based effect.
-
-`plotMDS` plots the first two dimensions as a default, however you can plot higher dimensions using the `dim` argument.
-
-```{r plotMDS3and4}
-# Dimension 3 appears to separate pregnant samples from the rest. Dim4?
-plotMDS(dgeObj,dim=c(3,4), col=col.status)
-legend("topleft",fill=c("blue","red","dark green"),legend=levels(sampleinfo$Status))
-```
-
-
-Another alternative is to generate an interactive MDS plot using the *Glimma* package. This allows the user to interactively explore the different dimensions.
-
-```{r glimmaMDS}
-labels <- paste(sampleinfo$SampleName, sampleinfo$CellType, sampleinfo$Status)
-group <- paste(sampleinfo$CellType,sampleinfo$Status,sep=".")
-group <- factor(group)
-glMDSPlot(dgeObj, labels=labels, groups=group, folder="mds")
-```
-
-*Glimma* was created to make interactive versions of some of the popular plots from the *limma* package. At present it can be used to obtain MDS plots and mean-difference (MD) plots, which will be covered later. The output of `glMDSPlot` is an html page (/mds/MDS-Plot.html) that shows the MDS plot on the left, and the amount of variation explained by each dimension in a barplot on the right. The user can hover over points to find out sample information, and switch between successive dimensions in the MDS plot by clicking on the bars in the barplot. The default MDS plots shows dimensions 1 and 2.
-
-### Hierarchical clustering with heatmaps
-
-An alternative to `plotMDS` for examining relationships between samples is using hierarchical clustering. Heatmaps are a nice visualisation to examine hierarchical clustering of your samples. We can do this using the `heatmap.2` function from the *gplots* package. In this example `heatmap.2` calculates a matrix of euclidean distances from the logCPM (`logcounts` object) for the 500 most variable genes. (Note this has more complicated code than plotting principle components using `plotMDS`.)
-
-The *RColorBrewer* package has nicer colour schemes, accessed using the `brewer.pal` function. "RdYlBu" is a common choice, and "Spectral" is also nice.
-
-Note:The `png` function will create a png file to save the plots created straight after, and will close this file when `dev.off()` is called. To see your plots interactively, simply omit those two lines.
-
-Let's select data for the 500 most variable genes and plot the heatmap
-
-```{r getHMData}
-# We estimate the variance for each row in the logcounts matrix
-var_genes <- apply(logcounts, 1, var)
-head(var_genes)
-# Get the gene names for the top 500 most variable genes
-select_var <- names(sort(var_genes, decreasing=TRUE))[1:500]
-head(select_var)
-# Subset logcounts matrix
-highly_variable_lcpm <- logcounts[select_var,]
-dim(highly_variable_lcpm)
-head(highly_variable_lcpm)
-```
-
-```{r plotHM}
-## Get some nicer colours
-mypalette <- brewer.pal(11,"RdYlBu")
-## http://colorbrewer2.org/#type=sequential&scheme=BuGn&n=3
-morecols <- colorRampPalette(mypalette)
-# Set up colour vector for celltype variable
-col.cell <- c("purple","orange")[sampleinfo$CellType]
-
-# Plot the heatmap
-heatmap.2(highly_variable_lcpm, 
-          col=rev(morecols(50)),
-          trace="column", 
-          main="Top 500 most variable genes across samples",
-          ColSideColors=col.cell,scale="row")
-
-# Save the heatmap
-png(file="High_var_genes.heatmap.png")
-heatmap.2(highly_variable_lcpm, 
-          col=rev(morecols(50)), 
-          trace="none", 
-          main="Top 500 most variable genes\nacross samples", 
-          ColSideColors=col.cell, 
-          scale="row")
-dev.off()
-```
-
-> ## Challenge 3 {.challenge}
->
-> 1. Change the colour scheme to "PiYG" and redo the heatmap. Try `?RColorBrewer` and see what other colour schemes are available.
-> 1. Change the sample names to `group` using the `labCol` argument
-> 1. Redo the heatmap using the top 500 LEAST variable genes.
->
-
-**Solution**
-```{r solutionChallenge3,echo=FALSE, fig.height=8, fig.width=6}
-
-```
-
-
------
 
 ## Normalisation for composition bias
 
