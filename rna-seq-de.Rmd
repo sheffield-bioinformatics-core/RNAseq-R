@@ -63,6 +63,8 @@ load("Robjects/preprocessing.Rdata")
 The previous section walked-through the pre-processing and transformation of the count data. Here, for completeness, we list the minimal steps required to process the data prior to differential expression analysis.
 
 ```{r eval=FALSE}
+library(DESeq2)
+library(edgeR)
 ## Read the counts from the downloaded data
 seqdata <- read.delim("data/GSE60450_Lactation-GenewiseCounts.txt", stringsAsFactors = FALSE)
 #
@@ -83,109 +85,58 @@ keep <- rowSums(thresh) >= 2
 # Subset the rows of countdata to keep the more highly expressed genes
 counts.keep <- countdata[keep,]
 ## Convert to an edgeR object
-dgeObj <- DGEList(counts.keep)
-## Perform TMM normalisation
-dgeObj <- calcNormFactors(dgeObj)
-## Obtain corrected sample information
 sampleinfo <- read.delim("data/SampleInfo_Corrected.txt")
-group <- paste(sampleinfo$CellType,sampleinfo$Status,sep=".")
-group
+
+dds <- DESeqDataSetFromMatrix(counts.keep,
+                              colData = sampleinfo,
+                              design = ~CellType)
+
 ```
 
+### Overview of testing
 
-### Create the design matrix
-
-First we need to create a design matrix for the groups, as we have seen in the linear models lecture. 
-We have two variables, status and cell type. We will fit two models under two assumptions; no interaction and interaction of these two factors. 
-
-Let's start with the model with only main effects, that is no interaction. The main assumption here is that the effect of the status is the same in both type of cells.
+### The design matrix
 
 ```{r}
-# Create the two variables
-group <- as.character(group)
-type <- sapply(strsplit(group, ".", fixed=T), function(x) x[1])
-status <- sapply(strsplit(group, ".", fixed=T), function(x) x[2])
-# Specify a design matrix with an intercept term
-design <- model.matrix(~ type + status)
+group <- colData(dds)$CellType
+
+design <- model.matrix(~0+as.factor(group))
 design
+
 ```
 
-
-
-### Data exploration
-An MDS plot shows distances, in terms of biological coefficient of variation (BCV), between samples. What do you think of the quality of the data? Can you anticipate if the interaction term will be important?
-```{r}
-plotMDS(dgeObj, labels=group, cex=0.75, xlim=c(-4, 5))
-```
-### Estimating the dispersion
-
-The common dispersion estimates the overall BCV of the dataset, averaged over all genes:
-```{r}
-dgeObj <- estimateCommonDisp(dgeObj)
-```
-
-Then we estimate gene-wise dispersion estimates, allowing a possible trend with averge count size:
-```{r}
-dgeObj <- estimateGLMTrendedDisp(dgeObj)
-dgeObj <- estimateTagwiseDisp(dgeObj)
-```
-Plot the estimated dispersions:
-```{r}
-plotBCV(dgeObj)
-```
-
-
-### Testing for differential expression
-
-First, we fit genewise glms:
+### Estimating *size factors*
 
 ```{r}
-# Fit the linear model
-fit <- glmFit(dgeObj, design)
-names(fit)
-head(coef(fit))
-```
-Conduct likelihood ratio tests for luminal vs basal and show the top genes:
-```{r}
-lrt.BvsL <- glmLRT(fit, coef=2)
-topTags(lrt.BvsL)
-
+colData(dds)
+dds.sizeCorrected <- estimateSizeFactors(dds)
+colData(dds.sizeCorrected)
 ```
 
 
-> ## Challenge {.challenge}
-> Conduct likelihood ratio tests for virgin vs lactate and show the top genes.
+### Estimating *dispersion*
 
 ```{r}
-
+dds.dispersions <- estimateDispersions(dds.sizeCorrected)
+rowData(dds.dispersions)
 ```
 
 
+### Differential Expression with DESeq2
 
-### Contrasts
+In `DESeq2`, a differential expression analysis can be performed by using the `DESeq` function. This function requires a single parameter which is the `DESeqDataSet` object generated in the pre-processing steps describes. We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
 
-Suppose we want to find differentially expressed genes between pregnant and virgin. We don't have a parameter that explicitly will allow us to test that hypothesis. We need to build a contrast:
+The function will automatically run the `estimateSizeFactors` and `estimateDispersions` functions described above; or skip these steps if they have already been run.
 
 ```{r}
-PvsV <- makeContrasts(statuspregnant-statusvirgin, levels=design)
-lrt.pVsV <- glmLRT(fit, contrast=PvsV)
-topTags(lrt.pVsV)
+design(dds)
+de <- DESeq(dds)
 ```
 
-
-> ## Challenge {.challenge}
->
-> 1.Fit a model with interaction: What is the rationale to include the interaction (What assumption are you relaxing?)
-> 2. Is the number of replicates good enough to include the interaction?
-> 3. Is the interaction needed in the model?
-
-**Solution**
-```{r,echo=FALSE}
-# Solution
-
-```
+The results of the analysis can be obtained using the `results` function and displayed
 
 ```{r}
-save(lrt.BvsL,dgeObj,group,file="Robjects/DE.Rdata")
+results <- results(de)
+results
 ```
 
