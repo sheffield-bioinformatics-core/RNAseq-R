@@ -385,3 +385,14 @@ sampleinfo <- read.delim("data/SampleInfo_Corrected.txt")
 sampleinfo
 ```
 
+> ## Challenge 2 {.challenge}
+>
+> 1. Re-create the DESeqDataset object to include the corrected sample information
+> 2. Run plotPCA and verify that the sample groups now look correct
+>
+
+
+```{r}
+save(dds,sampleinfo,file="Robjects/preprocessing.Rdata")
+```
+
