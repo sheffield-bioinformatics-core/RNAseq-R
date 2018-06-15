@@ -207,7 +207,7 @@ pheatmap(assay(counts)[top_genes,],
 
 > ## Challenge {.challenge}
 > 1. Repeat the same heatmap as above, but for the top 100 genes
-> 2. 
+> 2. Change the plot so that gene names are displayed rather than Entrez IDs
 >
 
 ## Retrieving Genomic Locations
@@ -318,7 +318,7 @@ It is also possible to save the results of a Bioconductor analysis in a browser 
 
 First we create a data frame for just the DE genes.
 ```{r}
-sigGenes <- results.annotated[detags,]
+sigGenes <- results.annotated[which(results.annotated$padj < 0.05),]
 sigGenes
 ```
 
@@ -344,14 +344,14 @@ sigRegions
 The metadata we have added can also by used as a means to interrogate the ranges; as if the data were contained in a data frame.
 
 ```{r}
-sigRegions[order(sigRegions$LR,decreasing = TRUE)]
+sigRegions[order(sigRegions$log2FoldChange,decreasing = TRUE)]
 ```
 
 For visualisation purposes, we are going to restrict the data to genes that are located on chromosomes 1 to 19 and the sex chromosomes. This can be done with the `keepSeqLevels` function.
 
 ```{r}
 seqlevels(sigRegions)
-sigRegions <- keepSeqlevels(sigRegions, paste0("chr", c(1:19,"X","Y")))
+sigRegions <- keepSeqlevels(sigRegions, paste0("chr", c(1:19,"X","Y")),pruning.mode = "coarse")
 ```
 
 We will now create a score from the p-values that will displayed under each region, and colour scheme
@@ -360,7 +360,7 @@ for the regions based on the fold-change. For the score we can use the $-log_{10
 
 
 ```{r}
-Score <- -log10(sigRegions$FDR)
+Score <- -log10(sigRegions$padj)
 ```
 
 `colorRampPalette` is a useful function in base R for constructing a palette between two extremes. **When choosing colour palettes, make sure they are colour blind friendly**. The red / green colour scheme traditionally-applied to microarrays is a ***bad*** choice.
@@ -369,7 +369,7 @@ We will also truncate the fold-changes to between -5 and 5 to and divide this ra
 
 ```{r}
 rbPal <-colorRampPalette(c("red", "blue"))
-logfc <- pmax(sigRegions$logFC, -5)
+logfc <- pmax(sigRegions$log2FoldChange, -5)
 logfc <- pmin(logfc , 5)
 
 Col <- rbPal(10)[as.numeric(cut(logfc, breaks = 10))]
@@ -410,13 +410,29 @@ In brief:-
 The real advantage of `ggplot2` is the ability to change the appearance of our plot by mapping other variables to aspects of the plot. For example, we could colour the points based on a p-value cut-off. The colours are automatically chosen by `ggplot2`, but we can specifiy particular values.
 
 ```{r,fig.width=12,fig.height=5}
-ggplot(results, aes(x = logCPM, y=logFC,col=FDR < 0.05)) + geom_point()
 
-ggplot(results, aes(x = logCPM, y=logFC,col=FDR < 0.05)) + geom_point(alpha=0.4) + scale_colour_manual(values=c("black","red"))
+ggplot(df, aes(x = log2(baseMean), y=log2FoldChange,col=padj<0.05)) + geom_point() 
+
+ggplot(df, aes(x = log2(baseMean), y=log2FoldChange,col=padj<0.05)) + geom_point(alpha=0.4) +  scale_colour_manual(values=c("black","red"))
+
 ```
 
 The volcano plot can be constructed in a similar manner
 
 ```{r,fig.width=12,fig.height=5}
-ggplot(results, aes(x = logFC, y=-log10(FDR))) + geom_point()
+ggplot(df, aes(x = log2FoldChange, y=-log10(padj))) + geom_point()
 ```
+
+The `plotCounts` function that we saw earlier can be adjusted to return the data associated with the plot, which in-turn can be passed to a `ggplot2` function for customisable plots.
+
+```{r}
+plot_data <- plotCounts(dds, "94352",intgroup = c("CellType","Status"),returnData = TRUE)
+plot_data
+
+ggplot(plot_data, aes(x = CellType,y=count,col=Status)) + geom_point() + geom_jitter(width = 0.1)
+```
+
+```{r}
+plot_data <- plotCounts(dds, "94352",intgroup = c("CellType","Status"))
+```
+
