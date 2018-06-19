@@ -191,7 +191,7 @@ pwf <- nullp(genes, "mm10","knownGene")
 
 Conduct gene set enrichment analysis:
 
-```{r}
+```{r results="hide"}
 #?goseq
 go.results <- goseq(pwf, "mm10","knownGene")
 go.results
