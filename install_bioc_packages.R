@@ -13,4 +13,5 @@ biocLite(c("limma",
          "GEOquery",
          "goseq",
          "fgsea",
-          "ggbio"))
+          "ggbio",
+         "DESeq2"))

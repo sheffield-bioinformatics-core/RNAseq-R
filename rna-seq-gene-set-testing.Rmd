@@ -19,10 +19,6 @@ bibliography: ref.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-library(edgeR)
-```
-
 **Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**
 Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016
 
@@ -44,23 +40,110 @@ Based on the course [RNAseq analysis in R](http://combine-australia.github.io/20
 
 # Gene Set Testing
 
-The list of differentially expressed genes is sometimes so long that its interpretation becomes cumbersome and time consuming. A common downstream procedure is gene set testing. It aims to understand which pathways or gene networks the differentially expressed genes are implicated in.
+In the early days of microarray analysis, people were happy if they got a handful of differentially-expressed genes that they could validate or follow-up. However, with later technologies (and depending on the experimental setup) we might have thousands of statistically-significant results, which no-one has the time to follow-up. Also, we might be interested in pathways / mechanisms that are altered and not just individual genes.
 
-Various ways exist to test for enrichment of biological pathways. Two types of test answer two different questions: competitive and self-contained gene set tests.
+In this section we move towards discovering if our results are ***biologically significant***. Are the genes that we have picked statistical flukes, or are there some commonalities. 
 
-Competitive gene set tests, such as those implemented in `GOseq` and `camera`, ask the question whether the differentially expressed genes tend to be over-represented in the gene set, compared to all the other genes in the experiment.
+There are two different approaches one might use, and we will cover the theory behind both
 
-Self-contained tests, which include the `ROAST` procedure, ask the question "Are the genes in the set/pathway differentially expressed as a whole?"
+- There is also a bunch of websites for doing the tests
+    + we will show how they are done in Bioconductor so the theory is clear
+- We will assume we have done a differential-expression analysis, but the same techniques can be used for other situations when we have a gene list
+    + ChIP-seq
+    + RNA-seq
+    
+
+## Theory Part I: Over-representation analysis
+
+- "Threshold-based": require defintion of a statistical threshold to define list of genes to test (e.g. FDR < 0.01)
+- Hypergeometric test or Fisher's Exact test generally used.
+
+The question we are asking here is;
+
+> ***"Are the number of DE genes associated with Theme X significantly greater than what we might expect by chance alone?"***
+
+Where Theme X could be genes belonging to a particular GO (Gene Onotology) term.
+
+Let's imagine that we have a bag full of balls. Each balls represents a gene in the *gene universe*. 
+- Paint the balls representing our selected list grey, and paint the rest red.
+
+
+![](images/bag-and-balls.png)
+
+In this small example, we can define;
+
+- Total number of balls: 40
+- Total number of interesting (grey) balls: 10
+
+Now, lets select a number (say, 12) of the balls at random without seeing into the bag and look at what we get
+
+![](images/picked-balls.png)
+
+
+We have picked, at random, 8 grey balls. Using simulations, we can repeat the process and look at how many grey we get. We can (of course!) do this in R. In base R there is a family of functions that can generate random draws from various distributions; `rnorm`, `rbinom`, `rhyper` etc....
+
+The distribution of the data shows what the most-likely values are
 
 ```{r}
-# load DE.Rdata from Robjects/
-getwd()
-#load("Robjects/DE.Rdata")
-setwd("Robjects/")
-dir()
-load("DE.Rdata")
-ls()
+#see ?rhyper for argument definition
+trials <- rhyper(10000,40,10,12)
+hist(trials)
 ```
+
+We can count how many times each value is observed
+
+```{r}
+table(trials)
+```
+
+Dividing by the number of trials gives a probability of sorts
+
+```{r}
+table(trials)/10000
+
+```
+
+The probability of getting *at least* a certain number can also be computed
+
+```{r}
+cumsum(table(trials)/10000)
+1-cumsum(table(trials)/10000)
+```
+
+
+
+Back to our example, the distribution of balls can be expressed as a contingency table, on which we can use a Fisher's exact test
+
+Total grey balls: 10
+Total in subset: 12
+
+|  | In Selection | Not in Selection | Total 
+------------- | -------------
+Grey  | 8 | 2 | 10
+Not Grey  |4 | 26 | 30
+Total | 12 | 28 | 40
+
+
+
+The formula for Fisher's exact test is defined with reference to the cells of the 2 x 2 table
+
+| | Selected | Not Selected | Row Total
+------------- | -------------
+Selected  | a | b | a +b 
+Not Selected  | c | d | c + d
+Column Total | a  + c | b + d | a + b + c + d (=n)
+
+
+
+The formula for Fishers exact test is;
+
+$$ p = \frac{\binom{a + b}{a}\binom{c +d}{c}}{\binom{n}{a +c}} = \frac{(a+b)!(c+d)!(a+c)!(b+d)!}{a!b!c!d!n!} $$
+
+or less formally;
+
+*P = (ways of choosing grey balls) X (ways of non-grey balls amongst subset) / ways of choosing subset*
+
+Fortunately, we do not need to plug the numbers into these formulas manually and several packages for performing gene set testing exist which also account for the complexity of RNA-seq data.
 
 ## Gene Set Testing - competitive gene set tests
 
@@ -81,16 +164,16 @@ From the [GOseq vignette](https://www.bioconductor.org/packages/release/bioc/vig
 Create list of DEGs:
 
 ```{r}
+library(DESeq2)
+load("Robjects/DE.Rdata")
+## Make sure NA values are removed before continuing
+results.noNA <- results[!is.na(results$padj),]
 
-# Retrieve list of all genes tested:
-results <- as.data.frame(topTags(lrt.BvsL, n = Inf))
-print(head(results))
-
-# Derive list of DEGs by filtering on FDR:
-genes <- results$FDR < 0.01
+# Derive list of DEGs by filtering on adjusted p-value
+genes <- results.noNA$padj < 0.05
 
 # Add gene names to that list:
-names(genes) <- rownames(results)
+names(genes) <- rownames(results.noNA)
 
 print(head(genes))
 ```
@@ -133,9 +216,9 @@ library(fgsea)
 Create ranks:
 
 ```{r}
-results.ord <- results[ order(-results[,"logFC"]), ]
+results.ord <- results[ order(-results[,"log2FoldChange"]), ]
 head(results.ord)
-ranks <- results.ord$logFC
+ranks <- results.ord$log2FoldChange
 names(ranks) <- rownames(results.ord)
 head(ranks)
 ```
@@ -155,6 +238,7 @@ pathways <- Mm.H
 Conduct analysis:
 
 ```{r}
+library(fgsea)
 ?fgsea
 fgseaRes <- fgsea(pathways, ranks, minSize=15, maxSize = 500, nperm=1000)
 class(fgseaRes)
@@ -209,134 +293,34 @@ plotGseaTable(pathways[topPathways], ranks, fgseaRes,
 ?plotGseaTable
 ```
 
-### CAMERA gene set testing using the Broad's curated gene sets
+## Creating Gene lists to use with an online tool
 
-Other databases of gene sets that are available come from the Broad Institute's Molecular Signatures Database ([MSigDB](http://software.broadinstitute.org/gsea/msigdb)). [CAMERA](https://academic.oup.com/nar/article/40/17/e133/2411151/Camera-a-competitive-gene-set-test-accounting-for) is good option for testing a very large number of gene sets such as the MSigDB sets, as it is very fast. It has the advantage of accounting for inter-gene correlation within each gene set [@wu2012camera].
+There are also many online tools that one could use to perform a gene set or ontology analysis. 
 
-Here we will be using the C2 gene sets for mouse, available as .rdata files from the WEHI bioinformatics page [http://bioinf.wehi.edu.au/software/MSigDB/index.html](http://bioinf.wehi.edu.au/software/MSigDB/index.html). The C2 gene sets contain 4725 curated gene sets collected from a variety of places: BioCarta, KEGG, Pathway Interaction Database, Reactome as well as some published studies. It doesn't include GO terms.
+- [DAVID](https://david.ncifcrf.gov/)
+- [GeneTrail](https://genetrail2.bioinf.uni-sb.de/)
+- [GORilla](http://cbl-gorilla.cs.technion.ac.il/)
 
-```{r}
+The tools generally require your input genes lists to be uploaded as a simple text file. In this final challenge, we will create some files that you might use in one of these tools.
 
-# ?camera.DGEList
+### A file containing names of background genes
 
-# Load in the mouse c2 gene sets
-# The R object is called Mm.c2
-#load("data/mouse_c2_v5.rdata")
-setwd("./data")
-load("mouse_c2_v5.rdata")
+This file has one column which lists **all the gene names** present in the analysis. Gene Symbols are commonly used, although a tool may accept Ensembl or Refseq names
 
-# Have a look at the first few gene sets
-names(Mm.c2)[1:5]
+### A file containing names of significant genes
 
-# Number of gene sets in C2
-length(Mm.c2)
-```
+This file has one column which lists the genes that passed the threshold for statistical significance (e.g. p-value less than 0.05) in your analysis. Gene Symbols are commonly used, although a tool may accept Ensembl or Refseq names
 
-The gene identifiers are Entrez Gene ID, as are the rownames of our DGEList object 'dgeObj'. We need to map the Entrez gene ids between the list of gene sets and our DGEList object. We can do this using the `ids2indices` function.
 
-```{r}
-c2.ind <- ids2indices(Mm.c2, rownames(dgeObj$counts))
-```
-
-CAMERA takes as input the DGEList object `dgeObj`, the indexed list of gene sets `c2.ind`, the design matrix, the contrast being tested, as well as some other arguments. By default, CAMERA can estimate the correlation for each gene set separately. However, in practise, it works well to set a small inter-gene correlation of about 0.05 using the `inter.gene.cor` argument.
-
-```{r}
-
-# Conduct analysis for the luminal-vs-basal contrast:
-group <- as.character(group)
-type <- sapply(strsplit(group, ".", fixed=T), function(x) x[1])
-status <- sapply(strsplit(group, ".", fixed=T), function(x) x[2])
-# Specify a design matrix without an intercept term
-design <- model.matrix(~ type + status)
-#design
-
-# Check contrasts:
-print(colnames(design))
-
-# Run analysis:
-gst.camera <- camera.DGEList(dgeObj,index=c2.ind,design=design,contrast=2,inter.gene.cor=0.05)
-```
-
-CAMERA outputs a dataframe of the resulting statistics, with each row denoting a different gene set. The output is ordered by p-value so that the most significant should be at the top. Let's look at the top 5 gene sets:
-
-```{r}
-gst.camera[1:5,]
-```
-
-The total number of significant gene sets at 5\% FDR is:
-
-```{r}
-table(gst.camera$FDR < 0.05)
-```
-
-You can write out the camera results to a csv file to open in excel.
-
-```{r}
-write.csv(gst.camera,file="gst_LumVsBas.csv")
-```
-
-> ## Challenge 1 {.challenge}
+> ## Challenge {.challenge}
 >
-> 1. Run `camera` on the pregnant vs lactating contrast.
-> 1. Run `camera` on a different set of MSigDB gene sets, the hallmark datasets, `mouse_H_v5.rdata`.
-> You will need to load in the hallmark gene sets, and the object will be called `Mm.H` in R.
->
-
-## Gene Set Testing - self-contained gene set tests
-
-### ROAST gene set testing
-
-[ROAST](https://academic.oup.com/bioinformatics/article-lookup/doi/10.1093/bioinformatics/btq401) is an example of a self-contained gene set test [@wu2010roast]. It asks the question, "Do the genes in my set tend to be differentially expressed between my conditions of interest?". ROAST does not use information on the other genes in the experiment, unlike `camera`. ROAST is a good option for when you're interested in a specific set, or a few sets. It is not really used to test thousands of sets at one time.
-
-From the Hallmark gene sets, two MYC pathways were most significant for the pregnant vs lactating contrast.
+> Create two text files that can be imported into online tools for further analysis
+> 1. A list of background genes
+> 2. A list of differentially expressed genes
+> 3. Load these files into GOrilla for analysis
+> HINT: the `write.table` function is able to write a data frame to a txt file in R. You will need to set the appropriate arguments to make sure that a text file with only one column is created.
 
 ```{r}
-H.camera[1:10,]
+
 ```
 
-Let's see if there are any MYC signalling pathways in MsigDB C2 collection. We can do this with the `grep` command on the names of the gene sets.
-
-```{r}
-grep("MYC_",names(c2.ind))
-
-# Let's save these so that we can subset c2.ind to test all gene sets with MYC in the name
-myc <- grep("MYC_",names(c2.ind))
-
-# What are these pathways called?
-names(c2.ind)[myc]
-```
-
-Let's use ROAST to see if these MYC related gene sets tend to be differentially expressed. Note that the syntax for `camera` and `roast` is almost identical.
-
-```{r}
-myc.rst <- roast(dgeObj,index=c2.ind[myc],design=design,contrast=3,nrot=999)
-myc.rst[1:15,]
-```
-
-Each row corresponds to a single gene set.
-
-The NGenes column gives the number of genes in each set.
-
-The PropDown and PropUp columns contain the proportions of genes in the set that are down- and up-regulated, respectively, with absolute fold changes greater than 2.
-
-The net direction of change is determined from the significance of changes in each direction, and is shown in the Direction column.
-
-The PValue provides evidence for whether the majority of genes in the set are DE in the specified direction
-
-The PValue.Mixed provides evidence for whether the majority of genes in the set are DE in any direction.
-
-FDRs are computed from the corresponding p-values across all sets.
-
-> ## Challenge 2 {.challenge}
->
-> 1. Test whether the MYC signalling pathways tend to be differentially expressed between basal virgin vs lactating.
-> 1. Look for gene sets containing "WNT" in the name and see whether they tend to be differentially expressed in basal pregnant vs lactating.
->
-
-Notes
-
-* A common application of ROAST is to use a set of DE genes that was defined from an analysis of an independent data set. ROAST can then determine whether similar changes are observed in the contrast of interest for the current data set.
-* ROAST estimates p-values by simulation, so the results may change slightly between runs. More precise p-values can be obtained by increasing the number of rotations, albeit at the cost of increased computational time.
-* The smallest p-value that can be reported is 1/(2nrot + 1) where nrot is the number of rotations. This lower bound can be decreased by increasing nrot.
-
-References

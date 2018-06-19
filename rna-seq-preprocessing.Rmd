@@ -114,7 +114,7 @@ The `seqdata` object contains information about genes (one gene per row), the fi
 
 ### Format the data
 
-We will be manipulating and reformating the counts matrix into a suitable format for downstream analysis. The first two columns in the `seqdata` dataframe contain annotation information. We need to make a new matrix containing only the counts, but we can store the gene identifiers (the `EntrezGeneID` column) as rownames. We will add more annotation information about each gene later on in the workshop.
+We will be manipulating and reformatting the counts matrix into a suitable format for downstream analysis. The first two columns in the `seqdata` dataframe contain annotation information. We need to make a new matrix containing only the counts, but we can store the gene identifiers (the `EntrezGeneID` column) as rownames. We will add more annotation information about each gene later on in the workshop.
 
 ```{r rowNames}
 head(seqdata)
@@ -273,7 +273,7 @@ colSums(assay(dds))
 
 ```
 
-We can also plot the library sizes as a barplot to see whether there are any major discrepanies between the samples more easily.
+We can also plot the library sizes as a barplot to see whether there are any major discrepancies between the samples more easily.
 
 ```{r plotLibrarySizes}
 
@@ -372,7 +372,7 @@ glMDSPlot(dds, labels=labels, groups=group, folder="mds")
 
 ### Correcting the sample information
 
-Hopefully we have spotted a potential sample swap in the dataset. Such errors are not uncommon when handling 
+Hopefully we have spotted a potential sample swap in the dataset. Such errors are not uncommon when handling large numbers of samples and sometimes we need to go back to the lab books and verify that a swap has been made. *If there is no supporting evidence for a swap then it can be safer to exclude the samples*. In this case, we are going to use a correct sample sheet.
 
 
 
@@ -385,10 +385,10 @@ sampleinfo <- read.delim("data/SampleInfo_Corrected.txt")
 sampleinfo
 ```
 
-> ## Challenge 2 {.challenge}
+> ## Challenge 3 {.challenge}
 >
 > 1. Re-create the DESeqDataset object to include the corrected sample information
-> 2. Run plotPCA and verify that the sample groups now look correct
+> 2. Re-run the plotPCA function on the new data and verify that the sample groups now look correct
 >
 
 
