@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 **Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**
-Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016
+Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016 and modified by Cancer Research Uk Cambridge Centre for the [Functional Genomics Autumn School 2017](https://bioinformatics-core-shared-training.github.io/cruk-autumn-school-2017/)
 
 ## Resources and data files
 
@@ -52,7 +52,7 @@ Now that we are happy that we have normalised the data and that the quality look
 ```{r}
 library(DESeq2)
 library(edgeR)
-load("Robjects/preprocessing.Rdata")
+
 ```
 
 
@@ -91,6 +91,14 @@ dds <- DESeqDataSetFromMatrix(counts.keep,
 
 ```
 
+We also have the output of the pre-processing section saved as an R object if you didn't manage to complete these steps.
+
+```{r}
+## Only run if you didn't complete the previous section on pre-processing
+load("Robjects/preprocessing.Rdata")
+```
+
+
 ### Overview of testing
 
 ### The design matrix
@@ -109,15 +117,26 @@ design
 
 In `DESeq2`, a differential expression analysis can be performed by using the `DESeq` function. This function requires a single parameter which is the `DESeqDataSet` object generated in the pre-processing steps describes. We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
 
-The function runs a couple of processing steps automatically 
+The function runs a couple of processing steps automatically, which will be described at the end of this section.
+
 ```{r}
-design(dds)
+colData(dds)
+design(dds) 
 de <- DESeq(dds)
+
 ```
+
+Typically we decide the design for the analysis when we create the DESeq2 objects, but it can be modified prior to the differential expression analysis
+
+```{r}
+design(dds) <- ~CellType
+```
+
 
 The results of the analysis can be obtained using the `results` function and displayed to the screen. Each row is a particular gene measured in the study (i.e. all genes in the organism being studies) and each column reports some aspect of the differential expression analysis for that gene. Note that all genes are reported. Not all genes will be statistically significant. At this stage the gene identifiers are not very informative, something we will fix in the next section. We also cannot easily identify genes that are differentially expressed.
 
 ```{r}
+de <- DESeq(dds)
 results <- results(de)
 results
 
@@ -128,7 +147,16 @@ results
 > 1. How many genes have an adjusted p-value less than 0.05?
 > 2. Produce a new version of the results table, where the rows are ordered according to adjusted p-value
 > 3. Write this new data frame to a `.csv` file
->
+> 4. Re-run the analysis to find differentially-expressed genes between *Virgin* and *Lactate*
+> HINT: you may need to use the `na.omit` function to ignore `NA` values in a vector
+> HINT: you can use the `order` function that we saw in the R introduction to re-order rows...
+
+
+
+```{r}
+
+
+```
 
 
 ### Fitting alternative models to the data
@@ -136,7 +164,9 @@ results
 `DESEq2` allows for more complicated models
 
 ```{r}
-
+design(dds) <- ~CellType+Status
+de <- DESeq(dds)
+results(de,contrast=c("Status","virgin","lactate"))
 ```
 
 ### Estimating *size factors*
@@ -155,9 +185,4 @@ dds.dispersions <- estimateDispersions(dds.sizeCorrected)
 rowData(dds.dispersions)
 ```
 
-### Saving objects
-
-```{r}
-save(dds,results,file="Robjects/DE.Rdata")
-```
 
