@@ -23,15 +23,13 @@ Based on the course [RNAseq analysis in R](http://combine-australia.github.io/20
 
 Before starting this section, we will make sure we have all the relevant objects from the Differential Expression analysis present.
 
-```{r echo=FALSE,results="hide"} 
-suppressPackageStartupMessages(library(org.Mm.eg.db))
-```
 
 
 ```{r}
 suppressPackageStartupMessages(library(DESeq2))
 
 load("Robjects/DE.Rdata")
+load("Robjects/preprocessing.Rdata")
 ```
 
 # Overview
@@ -44,9 +42,10 @@ load("Robjects/DE.Rdata")
 
 
 
-We now have a list of genes ordered according to their evidence for being differentially-expressed.
+We can now have a list of genes ordered according to their evidence for being differentially-expressed.
 
 ```{r}
+results <- results(de.status)
 results.ordered <- results[order(results$padj,decreasing = FALSE),]
 results.ordered
 ```
@@ -57,19 +56,26 @@ The log2 fold change for a particular comparison is plotted on the y-axis and th
 
 
 ```{r}
-plotMA(results)
+plotMA(de.status)
 ```
+
+***Note*** You may see an error message when trying to make the above MA plot. This could be because both `limma` and `DESeq2` have a function called `plotMA`, and R can sometimes pick the wrong function. To explictly use the `DESeq2` function you can use:-
+
+```{r}
+DESeq2::plotMA(de.status)
+```
+
 
 Another common plot for displaying the results of a differential expression analysis is a *volcano plot*
 
 ```{r}
 
-plot(results$log2FoldChange, -log10(results$padj),
+plot(results.ordered$log2FoldChange, -log10(results.ordered$padj),
      pch=16,       
      xlab="Log Fold Change",
        ylab="Significance")
-degenes <- which(results$padj < 0.05)
-points(results$log2FoldChange[degenes],-log10(results$padj)[degenes],
+degenes <- which(results.ordered$padj < 0.05)
+points(results.ordered$log2FoldChange[degenes],-log10(results.ordered$padj)[degenes],
        col="red",
        pch=16)
 
@@ -79,7 +85,7 @@ points(results$log2FoldChange[degenes],-log10(results$padj)[degenes],
 It can also be useful to examine the counts of reads for a single gene across the groups. A simple function for making this plot is `plotCounts`, which normalizes counts by sequencing depth and adds a pseudocount of 1/2 to allow for log scale plotting. The counts are grouped by the variables in  `intgroup`, where more than one variable can be specified. Here we specify the gene which had the smallest p value from the results table created above. You can select the gene to plot by rowname or by numeric index:-
 
 ```{r}
-plotCounts(dds, "94352",intgroup = c("CellType"))
+plotCounts(dds, "67111",intgroup = c("Status"))
 ```
 
 
@@ -178,7 +184,7 @@ write.csv(results.annotated,file="LumvsBasalResults.csv",row.names=FALSE)
 The gene names that we have discovered can now be added to any plots that we have created
 
 ```{r}
-plotCounts(dds, "94352",intgroup = c("CellType"),main="Loxl2")
+plotCounts(dds, "67111",intgroup = c("Status"),main="Naaa")
 ```
 
 
@@ -205,10 +211,17 @@ pheatmap(assay(counts)[top_genes,],
          annotation_col = sampleInfo)
 ```
 
-> ## Challenge {.challenge}
-> 1. Repeat the same heatmap as above, but for the top 100 genes
+> ## Challenge 1{.challenge}
+> 1. Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes
 > 2. Change the plot so that gene names are displayed rather than Entrez IDs
 >
+
+```{r}
+
+
+```
+
+
 
 ## Retrieving Genomic Locations
 
@@ -394,7 +407,7 @@ A simple scatter plot, equivalent to `plotMA` from before, can be generated as f
 
 ```{r,fig.width=12,fig.height=5}
 library(ggplot2)
-df <- as.data.frame(results)
+df <- as.data.frame(results.ordered)
 ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point() 
 
 ```
