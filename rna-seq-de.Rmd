@@ -1,7 +1,7 @@
 ---
 title: "RNA-seq analysis in R"
 subtitle: "Differential Expression of RNA-seq data"
-author: "Stephane Ballereau, Mark Dunning, Oscar Rueda, Ashley Sawle"
+author: "Mark Dunning"
 date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
 output:
   html_notebook:
@@ -19,7 +19,7 @@ bibliography: ref.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**
+**Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
 Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016 and modified by Cancer Research Uk Cambridge Centre for the [Functional Genomics Autumn School 2017](https://bioinformatics-core-shared-training.github.io/cruk-autumn-school-2017/)
 
 ## Resources and data files

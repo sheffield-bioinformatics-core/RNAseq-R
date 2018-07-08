@@ -1,7 +1,7 @@
 ---
 title: "RNA-seq Analysis in R"
 subtitle: "Annotation and Visualisation of RNA-seq results"
-author: "Stephane Ballereau, Mark Dunning, Oscar Rueda, Ashley Sawle"
+author: "Mark Dunning"
 date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
 output:
   html_notebook:
@@ -18,7 +18,7 @@ bibliography: ref.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**
+**Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
 Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016
 
 Before starting this section, we will make sure we have all the relevant objects from the Differential Expression analysis present.
@@ -45,8 +45,8 @@ load("Robjects/preprocessing.Rdata")
 We can now have a list of genes ordered according to their evidence for being differentially-expressed.
 
 ```{r}
-results <- results(de.status)
-results.ordered <- results[order(results$padj,decreasing = FALSE),]
+results.status <- results(de.status)
+results.ordered <- results.status[order(results.status$padj,decreasing = FALSE),]
 results.ordered
 ```
 
@@ -87,6 +87,16 @@ It can also be useful to examine the counts of reads for a single gene across th
 ```{r}
 plotCounts(dds, "67111",intgroup = c("Status"))
 ```
+
+> ## Challenge 1{.challenge}
+> 1. What is the Entrez ID of the gene with the lowest p-value in the lactate vs virgin contrast?
+> 2. Plot the counts to compare the expression of this gene in virgin vs lactate
+>
+
+```{r}
+
+```
+
 
 
 However, it is hard to assess the biological significance of such a gene without more information about . To perform such a task we need to map between the identifiers we have in the `DESeq2` output and more familiar names.
@@ -211,7 +221,7 @@ pheatmap(assay(counts)[top_genes,],
          annotation_col = sampleInfo)
 ```
 
-> ## Challenge 1{.challenge}
+> ## Challenge 2{.challenge}
 > 1. Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes
 > 2. Change the plot so that gene names are displayed rather than Entrez IDs
 >
@@ -250,7 +260,7 @@ columns(tx)
 The `select` function is used in the same manner as the `org.Mm.eg.db` packages. 
 
 
-> ## Challenge {.challenge}
+> ## Challenge 3{.challenge}
 >
 > Use the TxDb.Mmusculus.UCSC.mm10.knownGene package to retrieve the exon coordinates for the genes `50916`, `110308`, `12293` 
 >
