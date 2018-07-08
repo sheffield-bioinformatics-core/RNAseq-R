@@ -67,19 +67,6 @@ Measuring gene expression on a genome-wide scale has become common practice over
 
 There are many steps involved in analysing an RNA-Seq experiment. Analysing an RNAseq experiment begins with sequencing reads. These are aligned to a reference genome, then the number of reads mapped to each gene can be counted. This results in a table of counts, which is what we perform statistical analyses on in R. While mapping and counting are important and necessary tasks, today we will be starting from the count data and getting stuck into analysis.
 
-## Data import
-*Set up an RStudio project specifying the directory where you have saved the `/data` directory*.
-
-First, let's load all the packages we will need to analyse the data.
-
-```{r setup, message = FALSE}
-library(edgeR)
-library(limma)
-library(Glimma)
-library(gplots)
-library(org.Mm.eg.db)
-library(RColorBrewer)
-```
 
 ### Mouse mammary gland dataset
 
@@ -172,6 +159,7 @@ colSums(countdata)
 We'll use the `cpm` function from the *edgeR* library [@robinson2010edgeR] to generate the CPM values and then filter. Note that by converting to CPMs we are normalising for the different sequencing depths for each sample.
 
 ```{r getCPM}
+library(edgeR)
 # Obtain CPMs
 myCPM <- cpm(countdata)
 # Have a look at the output
@@ -284,11 +272,12 @@ abline(h=20e6, lty=2)
 colSums(assay(dds))
 ```
 
-Count data is not normally distributed, so if we want to examine the distributions of the raw counts we need to log the counts. Next we'll use box plots to check the distribution of the read counts on the log2 scale. We can use the `cpm` function to get log2 counts per million, which are corrected for the different library sizes. The `cpm` function also adds a small offset to avoid taking log of zero.  
+Count data is not normally distributed, so if we want to examine the distributions of the raw counts we need to log the counts. Next we'll use box plots to check the distribution of the read counts on the log2 scale. We can use the `vst` function from `DESeq2`to apply a *variance-stablising transformation*. The effect is to remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. The resulting counts have also been normalized with respect to library size or other normalization factors. For more details see the [DESeq2 vignette]( http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#count-data-transformations)
+
 
 
 ```{r}
-# Get log2 counts per million
+# Get log2 counts
 vsd <- vst(dds,blind=TRUE)
 # Check distributions of samples using boxplots
 boxplot(assay(vsd), xlab="", ylab="Log2 counts per million",las=2)
@@ -307,18 +296,17 @@ From the boxplots we see that overall the density distributions of raw log-inten
 
 ### Heatmap of the sample-to-sample distances
 
-> Another use of the transformed data is sample clustering. Here, we apply the dist function to the transpose of the transformed count matrix to get sample-to-sample distances.
-
+Another use of the transformed data is sample clustering. Here, we apply the `dist` function to the transpose of the transformed count matrix to get sample-to-sample distances.
 
 
 ```{r}
 sampleDists <- dist(t(assay(vsd)))
 ```
 
-> A heatmap of this distance matrix gives us an overview over similarities and dissimilarities between samples. We have to provide a hierarchical clustering hc to the heatmap function based on the sample distances, or else the heatmap function would calculate a clustering based on the distances between the rows/columns of the distance matrix.
+A heatmap of this distance matrix gives us an overview over similarities and dissimilarities between samples. We have to provide a hierarchical clustering hc to the heatmap function based on the sample distances, or else the heatmap function would calculate a clustering based on the distances between the rows/columns of the distance matrix.
 
 ```{r}
-library("RColorBrewer")
+library(RColorBrewer)
 library(pheatmap)
 sampleDistMatrix <- as.matrix(sampleDists)
 rownames(sampleDistMatrix) <- paste(vsd$CellType, vsd$Status, sep="-")
@@ -336,39 +324,25 @@ pheatmap(sampleDistMatrix,
 
 ### Principal component (PCA) plot and Multi-Dimensional Scaling (MDS) of the samples
 
-Related to the distance matrix is the PCA plot, which shows the samples in the 2D plane spanned by their first two principal components. This type of plot is useful for visualizing the overall effect of experimental covariates and batch effects.
+Related to the distance matrix is the [(Principal Components Analysis) PCA](http://setosa.io/ev/principal-component-analysis/) plot, which shows the samples in the 2D plane spanned by their first two principal components. A principle components analysis is an example of an unsupervised analysis, where we don’t need to specify the groups. If your experiment is well controlled and has worked well, what we hope to see is that the greatest sources of variation in the data are the treatments/groups we are interested in. It is also an incredibly useful tool for quality control and checking for outliers
+
+`DESeq2` has a convenient `plotPCA` function for making the PCA plot, which makes use of the `ggplot2` graphics package.
 
 ```{r}
-plotPCA(vsd,intgroup=c("CellType"))
+plotPCA(vsd,intgroup="CellType")
 ```
 
 > ## Challenge 2 {.challenge}
 >
-> 1. Rerun the plotPCA function and change the intgroup parameter so that both CellType and Status are shown on the plot.
-> HINT: check the documentation for the plotPCA function.
->
+> 1. Is the plot based on all genes in the dataset? How can we change how many genes are used for the PCA analysis?
+> 2. Change the `intgroup` parameter so that both CellType and Status are used for grouping.
+> HINT: check the documentation for the `plotPCA` function.
+> 2. Is there something strange going on with the samples?
+> 3. Identify the two samples that don't appear to be in the right place.
 
+### Note about batch effects
 
-Another alternative is to generate an interactive MDS plot using the *Glimma* package. This allows the user to interactively explore the different dimensions.
-
-```{r glimmaMDS}
-labels <- paste(sampleinfo$SampleName, sampleinfo$CellType, sampleinfo$Status)
-group <- paste(sampleinfo$CellType,sampleinfo$Status,sep=".")
-group <- factor(group)
-glMDSPlot(dds, labels=labels, groups=group, folder="mds")
-```
-
-*Glimma* was created to make interactive versions of some of the popular plots from the *limma* package. At present it can be used to obtain MDS plots and mean-difference (MD) plots, which will be covered later. The output of `glMDSPlot` is an html page (/mds/MDS-Plot.html) that shows the MDS plot on the left, and the amount of variation explained by each dimension in a barplot on the right. The user can hover over points to find out sample information, and switch between successive dimensions in the MDS plot by clicking on the bars in the barplot. The default MDS plots shows dimensions 1 and 2.
-
-
-
-> ## Discussion {.challenge}
->
-> Look at the MDS plot and PCA coloured by cell type.
-> Is there something strange going on with the samples?
-> Identify the two samples that don't appear to be in the right place.
->
-
+In our unsupervised analysis we see that the main source of variation is due to biological effects, and not technical variation such as when the libraries were sequenced. If we do observe high technical variation in our data, it is not a complete disaster provided that we have designed our experiment propery. In particular the [sva Bioconductor package](https://bioconductor.org/packages/release/bioc/vignettes/sva/inst/doc/sva.pdf) can correct for batch effects provided that representatives of the groups of interest appear in each batch. Alternatively, the batch or confounding factor may be incorporated into the differential expression analysis.
 
 ### Correcting the sample information
 
