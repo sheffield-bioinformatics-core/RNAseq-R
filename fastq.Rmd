@@ -1,0 +1,114 @@
+---
+title: "Retrieving fastq files, Quality Assessment and counting"
+author: "Mark Dunning"
+date: "25 July 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Command-line analysis
+
+
+## Retrieve the fastq file
+
+We can download a fastq file from the Short Read Archive, provided we know it's location, using a `wget` unix command
+
+```{bash eval=FALSE}
+
+### DO NOT RUN
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByStudy/sra/SRP/SRP045/SRP045534/SRR1552444/SRR1552444.sra
+```
+
+
+The ftp site for Sequencing read archive can be accessed at `ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByStudy/sra/SRP/`
+
+from there you can navigate to the folder containing a particular sequencing run
+
+
+## Extract the fastq
+
+The `sra-toolkit` provides various utilities for dealing with files in this format, including converting to the more popular `fastq` format.
+
+```{bash eval=FALSE}
+## DO NOT RUN - it will take too long
+fastq-dump SRR1552444.sra 
+```
+
+## Run the fastqc tool
+
+```{bash eval=FALSE}
+fastqc SRR1552444.fastq
+```
+
+
+## Download reference transcripts
+
+```{bash eval=FALSE}
+wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M18/gencode.vM18.transcripts.fa.gz
+wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M18/gencode.vM18.annotation.gtf.gz
+```
+
+## Creating a salmon index
+
+```{bash eval=FALSE}
+salmon index -i gencode_18 -t gencode.vM18.transcripts.fa.gz
+```
+
+## Salmon quantification
+
+```{bash eval=FALSE}
+salmon quant -i gencode_18 -p 6 --libType A  \
+--gcBias --biasSpeedSamp 5  \
+-r SRR1552444.fastq -o SRR1552444
+
+```
+
+```{bash eval=FALSE}
+ls SRR1552444
+head SRR1552444/quant.sf
+
+```
+
+# Analysis in Rstudio
+
+```{r}
+library(tximport)
+library(GenomicFeatures)
+```
+
+## Find the quant files
+
+```{r}
+
+quant_files <- "SRR1552444/quant.sf"
+```
+
+## Make a transcript mapping file
+
+```{r}
+library(stringr)
+tmp <- read.delim("SRR1552444/quant.sf",stringsAsFactors = FALSE)
+txMap <- str_split_fixed(tmp$Name, pattern = "\\|", n=8)
+tx2gene <- data.frame(TXNAME=tmp$Name,GENE=txMap[,2])
+head(tx2gene)
+```
+
+## Import the transcripts
+
+```{r}
+txi <- tximport(quant_files, type="salmon", tx2gene=tx2gene)
+names(txi)
+```
+
+```{r}
+head(txi$abundance)
+head(txi$counts)
+```
+
+
+## References
+
+[https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html](DESeq2 tutorial from Bioconductor 2018 conference)
