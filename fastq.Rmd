@@ -12,14 +12,14 @@ knitr::opts_chunk$set(echo = TRUE)
 # Command-line analysis
 
 
-## Retrieve the fastq file
+## Retrieve the fastq file from Sequencing Read Archive (SRA)
 
 We can download a fastq file from the Short Read Archive, provided we know it's location, using a `wget` unix command
 
 ```{bash eval=FALSE}
 
 ### DO NOT RUN
-wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByStudy/sra/SRP/SRP045/SRP045534/SRR1552444/SRR1552444.sra
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByStudy/sra/SRP/SRP045/SRP045534/SRR1552444/SRR1552444.sra -P sra_data/
 ```
 
 
@@ -34,35 +34,48 @@ The `sra-toolkit` provides various utilities for dealing with files in this form
 
 ```{bash eval=FALSE}
 ## DO NOT RUN - it will take too long
-fastq-dump SRR1552444.sra 
+fastq-dump sra_data/SRR1552444.sra -O fastq_files
 ```
+
+```{bash}
+gzip fastq_files/SRR1552444.fastq
+```
+
 
 ## Run the fastqc tool
 
 ```{bash eval=FALSE}
-fastqc SRR1552444.fastq
+fastqc fastq_files/SRR1552444.fastq.gz -o qc
+```
+
+
+## Collecting the QC with multiqc
+
+
+```{bash}
+multiqc qc
 ```
 
 
 ## Download reference transcripts
 
 ```{bash eval=FALSE}
-wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M18/gencode.vM18.transcripts.fa.gz
-wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M18/gencode.vM18.annotation.gtf.gz
+wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ensembl_ref/
+wget ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz -P ensembl_ref
+
 ```
 
 ## Creating a salmon index
 
 ```{bash eval=FALSE}
-salmon index -i gencode_18 -t gencode.vM18.transcripts.fa.gz
+salmon index -i salmon_ref/GRCm38 -t ensembl_ref/Mus_musculus.GRCm38.cdna.all.fa.gz
 ```
 
 ## Salmon quantification
 
 ```{bash eval=FALSE}
-salmon quant -i gencode_18 -p 6 --libType A  \
---gcBias --biasSpeedSamp 5  \
--r SRR1552444.fastq -o SRR1552444
+salmon quant -i salmon_ref/GRCm38 --libType A  \
+--gcBias  -r fastq_files/SRR1552444.fastq.gz -o SRR1552444
 
 ```
 
@@ -72,43 +85,34 @@ head SRR1552444/quant.sf
 
 ```
 
-# Analysis in Rstudio
 
-```{r}
-library(tximport)
-library(GenomicFeatures)
+## Running for all samples
+
+```{bash}
+mkdir -p salmon_quant/
+for i in {44..55}
+do
+salmon quant -i salmon_ref/GRCm38 --libType A  \
+--gcBias -r fastq_files/SRR15524${i}.fastq.gz -o salmon_quant/SRR15524${i}
+done
+
 ```
 
-## Find the quant files
 
-```{r}
+# Alignment to the genome
 
-quant_files <- "SRR1552444/quant.sf"
-```
+```{bash}
+mkdir aligned_reads
+wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz
+gunzip Mus_musculus.GRCm38.dna.chromosome.19.fa.gz
+hisat2-build Mus_musculus.GRCm38.dna.chromosome.19.fa.gz GRCm38_chr19_hisat
+hisat2 -q -x GRCm38_chr19 fastq_files/SRR1552444.fastq.gz -S aligned_reads/SRR1552444.sam
 
-## Make a transcript mapping file
 
-```{r}
-library(stringr)
-tmp <- read.delim("SRR1552444/quant.sf",stringsAsFactors = FALSE)
-txMap <- str_split_fixed(tmp$Name, pattern = "\\|", n=8)
-tx2gene <- data.frame(TXNAME=tmp$Name,GENE=txMap[,2])
-head(tx2gene)
-```
-
-## Import the transcripts
-
-```{r}
-txi <- tximport(quant_files, type="salmon", tx2gene=tx2gene)
-names(txi)
-```
-
-```{r}
-head(txi$abundance)
-head(txi$counts)
 ```
 
 
 ## References
 
 [https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html](DESeq2 tutorial from Bioconductor 2018 conference)
+

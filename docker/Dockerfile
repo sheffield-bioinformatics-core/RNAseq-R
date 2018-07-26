@@ -31,4 +31,12 @@ RUN wget https://github.com/COMBINE-lab/salmon/releases/download/v0.11.0/salmon-
 RUN tar xvzf salmon-0.11.0-linux_x86_64.tar.gz
 RUN chmod +x /tmp/salmon-0.11.0-linux_x86_64/bin/salmon
 RUN ln -s /tmp/salmon-0.11.0-linux_x86_64/bin/salmon /usr/bin
+RUN wget https://bootstrap.pypa.io/get-pip.py
+RUN sudo python get-pip.py
+RUN pip install multiqc
+RUN wget ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/downloads/hisat2-2.1.0-Linux_x86_64.zip
+RUN unzip hisat2-2.1.0-Linux_x86_64.zip
+RUN ln -s /tmp/hisat2-2.1.0/hisat2 /usr/bin
+RUN ln -s /tmp/hisat2-2.1.0/hisat2-build /usr/bin
 WORKDIR /home//participant/Course_Materials/
+

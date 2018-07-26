@@ -1,0 +1,69 @@
+---
+title: "Creating the metadata"
+author: "Mark Dunning"
+date: "26/07/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Required libraries
+
+```{r}
+library(GEOquery)
+library(dplyr)
+library(SRAdb)
+```
+
+## Getting meta-data from GEO
+
+```{r}
+tmp <- getGEO("GSE60450")
+gseInf <- pData(tmp[[1]])
+gseInf
+```
+
+## Getting meta-data from SRA
+
+```{r}
+sqlfile <-'SRAmetadb.sqlite'
+if(!file.exists('SRAmetadb.sqlite')) sqlfile <<- getSRAdbFile()
+sra_con <- dbConnect(SQLite(),sqlfile)
+
+sraInf <- getSRAinfo("SRP045534",sra_con, sraType="sra")
+sraInf
+```
+
+
+## Joining the meta-data
+
+```{r}
+gseInf <- mutate(gseInf, experiment = substr(as.character(relation.1),44,52))
+gseInf
+dir.create("meta_data",showWarnings = FALSE)
+
+combinedInf <- left_join(gseInf, sraInf, by="experiment")
+
+combinedInf <- rename(combinedInf,CellType=`immunophenotype:ch1`,Status=`developmental stage:ch1`) %>% 
+  mutate(CellType = ifelse(grepl("luminal",CellType),"luminal","basal")) %>% 
+  mutate(Status = gsub("18.5 day ", "", Status)) %>% 
+  mutate(Status = gsub("2 day ","",Status)) %>% 
+  mutate(Name = basename(as.character(supplementary_file_1))) %>% 
+  mutate(Name = substr(Name, 12,18)) %>% 
+  select(run, Name,CellType,Status)
+
+
+write.table(combinedInf, file="meta_data/sampleInfo_Corrected.txt",sep="\t",row.names=FALSE)
+
+## Create a sample swap
+
+combinedInf$CellType[combinedInf$Name == "MCL1-DH"] <- "luminal"
+combinedInf$CellType[combinedInf$Name == "MCL1-LA"] <- "basal"
+
+write.table(combinedInf, file="meta_data/sampleInfo.txt",sep="\t",row.names=FALSE)
+
+
+```
+

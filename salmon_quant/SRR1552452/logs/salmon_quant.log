@@ -1,0 +1,52 @@
+[2018-07-26 12:33:21.514] [jointLog] [info] Fragment incompatibility prior below threshold.  Incompatible fragments will be ignored.
+[2018-07-26 12:33:21.514] [jointLog] [info] parsing read library format
+[2018-07-26 12:33:21.514] [jointLog] [info] There is 1 library.
+[2018-07-26 12:33:21.564] [jointLog] [info] Loading Quasi index
+[2018-07-26 12:33:21.564] [jointLog] [info] Loading 32-bit quasi index
+[2018-07-26 12:34:24.044] [jointLog] [info] done
+[2018-07-26 12:34:24.044] [jointLog] [info] Index contained 109898 targets
+[2018-07-26 12:34:25.082] [jointLog] [warning] Fragment GC bias correction is currently *experimental* in single-end libraries.  Please use this option with caution.
+[2018-07-26 12:34:26.933] [jointLog] [info] Automatically detected most likely library type as U
+[2018-07-26 12:38:22.447] [fileLog] [info] 
+At end of round 0
+==================
+Observed 31688348 total fragments (31688348 in most recent round)
+
+[2018-07-26 12:38:22.446] [jointLog] [info] Computed 175913 rich equivalence classes for further processing
+[2018-07-26 12:38:22.446] [jointLog] [info] Counted 28006519 total reads in the equivalence classes 
+[2018-07-26 12:38:22.448] [jointLog] [info] Mapping rate = 88.3811%
+
+[2018-07-26 12:38:22.448] [jointLog] [info] finished quantifyLibrary()
+[2018-07-26 12:38:22.449] [jointLog] [info] Starting optimizer
+[2018-07-26 12:38:22.578] [jointLog] [info] Marked 0 weighted equivalence classes as degenerate
+[2018-07-26 12:38:22.594] [jointLog] [info] iteration = 0 | max rel diff. = 9352.81
+[2018-07-26 12:38:22.676] [jointLog] [info] iteration 11, adjusting effective lengths to account for biases
+[2018-07-26 12:38:36.109] [jointLog] [info] Computed expected counts (for bias correction)
+[2018-07-26 12:38:36.110] [jointLog] [info] processed bias for 0.0% of the transcripts
+[2018-07-26 12:38:38.079] [jointLog] [info] processed bias for 10.0% of the transcripts
+[2018-07-26 12:38:39.978] [jointLog] [info] processed bias for 20.0% of the transcripts
+[2018-07-26 12:38:41.946] [jointLog] [info] processed bias for 30.0% of the transcripts
+[2018-07-26 12:38:43.958] [jointLog] [info] processed bias for 40.0% of the transcripts
+[2018-07-26 12:38:45.559] [jointLog] [info] processed bias for 50.0% of the transcripts
+[2018-07-26 12:38:47.454] [jointLog] [info] processed bias for 60.0% of the transcripts
+[2018-07-26 12:38:49.078] [jointLog] [info] processed bias for 100.0% of the transcripts
+[2018-07-26 12:38:49.791] [jointLog] [info] iteration = 100 | max rel diff. = 17.381
+[2018-07-26 12:38:50.578] [jointLog] [info] iteration = 200 | max rel diff. = 9.27708
+[2018-07-26 12:38:51.367] [jointLog] [info] iteration = 300 | max rel diff. = 1.9108
+[2018-07-26 12:38:52.162] [jointLog] [info] iteration = 400 | max rel diff. = 2.47517
+[2018-07-26 12:38:52.953] [jointLog] [info] iteration = 500 | max rel diff. = 2.64158
+[2018-07-26 12:38:53.742] [jointLog] [info] iteration = 600 | max rel diff. = 0.211364
+[2018-07-26 12:38:54.529] [jointLog] [info] iteration = 700 | max rel diff. = 0.15003
+[2018-07-26 12:38:55.453] [jointLog] [info] iteration = 800 | max rel diff. = 0.0511752
+[2018-07-26 12:38:56.242] [jointLog] [info] iteration = 900 | max rel diff. = 0.107186
+[2018-07-26 12:38:57.028] [jointLog] [info] iteration = 1000 | max rel diff. = 3.58019
+[2018-07-26 12:38:57.815] [jointLog] [info] iteration = 1100 | max rel diff. = 17.1037
+[2018-07-26 12:38:58.610] [jointLog] [info] iteration = 1200 | max rel diff. = 0.0561393
+[2018-07-26 12:38:59.428] [jointLog] [info] iteration = 1300 | max rel diff. = 2.00153
+[2018-07-26 12:39:00.243] [jointLog] [info] iteration = 1400 | max rel diff. = 3.15222
+[2018-07-26 12:39:01.042] [jointLog] [info] iteration = 1500 | max rel diff. = 0.030539
+[2018-07-26 12:39:01.836] [jointLog] [info] iteration = 1600 | max rel diff. = 0.05352
+[2018-07-26 12:39:02.615] [jointLog] [info] iteration = 1697 | max rel diff. = 0.00787367
+[2018-07-26 12:39:02.620] [jointLog] [info] Finished optimizer
+[2018-07-26 12:39:02.620] [jointLog] [info] writing output 
+

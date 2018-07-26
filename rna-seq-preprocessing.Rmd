@@ -74,14 +74,101 @@ The data for this tutorial comes from a Nature Cell Biology paper, [*EGF-mediate
 
 This study examines the expression profiles of basal stem-cell enriched cells (B) and committed luminal cells (L) in the mammary gland of virgin, pregnant and lactating mice. Six groups are present, with one for each combination of cell type and mouse status. Each group contains two biological replicates.
 
+
+## Obtaining the metadata
+
+
 The sampleinfo file contains basic information about the samples that we will need for the analysis today.
 
 ```{r loadSampleInfo}
 # Read the sample information into R
-sampleinfo <- read.delim("data/SampleInfo.txt")
+sampleinfo <- read.delim("meta_data/sampleInfo.txt")
 View(sampleinfo)
 sampleinfo
+rownames(sampleinfo) <- sampleinfo$run
 ```
+
+
+
+### Reading in the count data
+
+
+```{r}
+dirs <- list.files(file.path("salmon_quant/"))
+quant_files <- paste0("salmon_quant/",dirs,"/quant.sf.gz")
+names(quant_files) <- dirs
+```
+
+```{r}
+library(readr)
+quants <- read_tsv(quant_files[1])
+head(quants)
+```
+
+
+```{r}
+library(GenomicFeatures)
+txdb <- makeTxDbFromGFF("ensembl_ref/Mus_musculus.GRCm38.91.chr.gtf.gz")
+k <- keys(txdb, keytype="TXNAME")
+tx_map <- select(txdb, k, "GENEID", "TXNAME")
+
+```
+
+```{r}
+library(tidyr)
+quants <- separate(quants, Name, c("TXNAME","Number"),remove = FALSE)
+head(quants)
+```
+
+```{r}
+library(dplyr)
+
+quants <- left_join(quants, tx_map, by="TXNAME")
+head(quants)
+```
+
+```{r}
+tx2gene <- dplyr:::select(quants, Name, GENEID)
+head(tx2gene)
+```
+
+```{r}
+any(is.na(tx2gene$GENEID))
+
+tx2gene <- tx2gene[!is.na(tx2gene$GENEID),]
+
+```
+
+
+```{r}
+library(tximport)
+
+txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene)
+names(txi)
+```
+
+```{r}
+head(txi$abundance)
+
+```
+
+```{r}
+head(txi$counts)
+```
+
+```{r}
+all(rownames(sampleinfo) == colnames(txi$counts))
+```
+
+
+
+```{r}
+library(DESeq2)
+dds <- DESeqDataSetFromTximport(txi, 
+                                colData = sampleinfo,
+                                design <- ~CellType)
+```
+
 
 ### Reading in the  count data
 

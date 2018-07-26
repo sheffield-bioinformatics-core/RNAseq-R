@@ -12,4 +12,5 @@ biocLite(c("limma",
          "fgsea",
          "DESeq2",
          "pheatmap","rmarkdown",
-          "tximport","tidyverse"),suppressUpdates=TRUE)
+          "tximport","tidyverse",
+         "SRAdb"),suppressUpdates=TRUE)
