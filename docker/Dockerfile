@@ -1,12 +1,12 @@
-FROM bioconductor/release_base
-MAINTAINER Mark Dunning<mark.dunning@cruk.cam.ac.uk>
+FROM bioconductor/release_base2
+MAINTAINER Mark Dunning<m.j.dunning@sheffield.ac.uk>
 RUN rm -rf /var/lib/apt/lists/*
 RUN apt-get update 
 RUN apt-get install --fix-missing -y git
 ###Get repository of the course. Install data and R packages
-#RUN apt-get install -y sra-toolkit
+#RUN apt-get install -y sra-toolkit default-jre
 RUN mkdir -p /home/participant/
-RUN git clone https://github.com/bioinformatics-core-shared-training/RNAseq-R.git /home/participant/Course_Materials
+RUN git clone https://github.com/sheffield-bioinformatics-core/RNAseq-R.git /home/participant/Course_Materials
 RUN R -f /home/participant/Course_Materials/install_bioc_packages.R
 WORKDIR /tmp
 RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.3.zip -P /tmp
@@ -27,4 +27,8 @@ RUN wget https://ndownloader.figshare.com/articles/3219685?private_link=1d788fd3
 RUN unzip raw.zip -d /home/participant/Course_Materials/data/
 RUN rm raw.zip
 RUN chown rstudio /home/participant/Course_Materials/
+RUN wget https://github.com/COMBINE-lab/salmon/releases/download/v0.11.0/salmon-0.11.0-linux_x86_64.tar.gz
+RUN tar xvzf salmon-0.11.0-linux_x86_64.tar.gz
+RUN chmod +x /tmp/salmon-0.11.0-linux_x86_64/bin/salmon
+RUN ln -s /tmp/salmon-0.11.0-linux_x86_64/bin/salmon /usr/bin
 WORKDIR /home//participant/Course_Materials/
