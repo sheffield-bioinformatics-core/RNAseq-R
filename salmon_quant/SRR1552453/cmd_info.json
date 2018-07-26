@@ -1,9 +1,0 @@
-{
-    "salmon_version": "0.11.0",
-    "index": "salmon_ref/GRCm38/",
-    "libType": "A",
-    "gcBias": [],
-    "unmatedReads": "fastq_files/SRR1552453.fastq",
-    "output": "salmon_quant/SRR1552453",
-    "auxDir": "aux_info"
-}
