@@ -12,7 +12,7 @@ output:
 minutes: 300
 layout: page
 subtitle: Pre-processsing RNA-seq data
-bibliography: ref.bib
+
 ---
 
 **Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
@@ -30,28 +30,8 @@ This material has been created using the following resources:
 http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
 http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
 http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
 
-Data files downloaded from:  
-ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE60nnn/GSE60450/suppl/GSE60450_Lactation-GenewiseCounts.txt.gz
-http://bioinf.wehi.edu.au/software/MSigDB/mouse_c2_v5.rdata
-http://bioinf.wehi.edu.au/software/MSigDB/mouse_H_v5.rdata
-
-Data files:  
-sampleinfo.txt  
-GSE60450_Lactation-GenewiseCounts.txt  
-mouse_c2_v5.rdata  
-mouse_H_v5.rdata
-
-Data files available from: [https://figshare.com/s/1d788fd384d33e913a2a](https://figshare.com/s/1d788fd384d33e913a2a)
-You should download these files and place them in your `/data` directory.
-
-Packages used:
-limma,
-edgeR,
-gplots,
-org.Mm.eg.db,
-RColorBrewer,
-Glimma
 
 ## Overview
 
@@ -65,20 +45,22 @@ Glimma
 
 Measuring gene expression on a genome-wide scale has become common practice over the last two decades or so, with microarrays predominantly used pre-2008. With the advent of next generation sequencing technology in 2008, an increasing number of scientists use this technology to measure and understand changes in gene expression in often complex systems. As sequencing costs have decreased, using RNA-Seq to simultaneously measure the expression of tens of thousands of genes for multiple samples has never been easier. The cost of these experiments has now moved from generating the data to storing and analysing it.
 
-There are many steps involved in analysing an RNA-Seq experiment. Analysing an RNAseq experiment begins with sequencing reads. These are aligned to a reference genome, then the number of reads mapped to each gene can be counted. This results in a table of counts, which is what we perform statistical analyses on in R. While mapping and counting are important and necessary tasks, today we will be starting from the count data and getting stuck into analysis.
+There are many steps involved in analysing an RNA-Seq experiment. Analysing an RNAseq experiment begins with sequencing reads. Traditionally, these are aligned to a reference genome, then the number of reads mapped to each gene can be counted. More modern approaches such as `salmon` quantify transcripts directly and do not require genome aligment  to have taken place. Either approach results in a table of counts, which is what we perform statistical analyses on in R. While mapping and counting are important and necessary tasks, this session will be starting from the count data and getting stuck into analysis.
 
+We will be following a workflow that uses the `DESeq2` package. An alternative and well-respected workflow is based on the [edgeR and limma packages](https://bioconductor.github.io/BiocWorkshops/rna-seq-analysis-is-easy-as-1-2-3-with-limma-glimma-and-edger.html).
 
 ### Mouse mammary gland dataset
 
-The data for this tutorial comes from a Nature Cell Biology paper, [*EGF-mediated induction of Mcl-1 at the switch to lactation is essential for alveolar cell survival*](http://www.ncbi.nlm.nih.gov/pubmed/25730472) [@Fu2015]. Both the raw data (sequence reads) and processed data (counts) can be downloaded from Gene Expression Omnibus database (GEO) under accession number [GSE60450](http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE60450).
+The data for this tutorial comes from a Nature Cell Biology paper, [*EGF-mediated induction of Mcl-1 at the switch to lactation is essential for alveolar cell survival*](http://www.ncbi.nlm.nih.gov/pubmed/25730472) [@Fu2015]. 
 
 This study examines the expression profiles of basal stem-cell enriched cells (B) and committed luminal cells (L) in the mammary gland of virgin, pregnant and lactating mice. Six groups are present, with one for each combination of cell type and mouse status. Each group contains two biological replicates.
 
+The sequencing reads for this experiment were uploaded to the [Sequencing Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra?term=SRP045534) and details of how to obtain the raw reads and process are given in the session "Preparing fastq files for analysis in R".
 
 ## Obtaining the metadata
 
 
-The sampleinfo file contains basic information about the samples that we will need for the analysis today.
+The `sampleInfo.txt` in the `meta_data` folder contains basic information about the samples that we will need for the analysis today. This includes the ID for the sample from SRA, an ID assigned by the researcher, and the cell type and developmental stage for each sample.
 
 ```{r loadSampleInfo}
 # Read the sample information into R
@@ -90,66 +72,150 @@ rownames(sampleinfo) <- sampleinfo$run
 
 
 
-### Reading in the count data
+## Reading in the count data
 
+### Overview
+
+We are going to use the [`tximport`](http://dx.doi.org/10.12688/f1000research.7563.1) package to import the count data into R and collapse the data to the *gene level*. This requires us to run a function in the following form:-
+
+```{r eval=FALSE}
+txi <- tximport(files=..., type="salmon", tx2gene=...)
+```
+
+So we will need to define the files that we want to import and a transcript mapping data frame. The transcript mapping takes the form 
+
+```
+ | TXNAME | GENEID
+1| ENST00000456328.2 |  ENSG00000223972.5
+2| ENST00000450305.2 | ENSG00000223972.5
+3| ENST00000473358.1 | ENSG00000243485.5
+4| ENST00000469289.1 | ENSG00000243485.5
+5| ENST00000607096.1 | ENSG00000284332.1
+6| ENST00000606857.1 | ENSG00000268020.3
+```
+
+`tximport` is able to import counts produced by different software, and different workflows are described for each in the [tximport vignette](https://bioconductor.org/packages/devel/bioc/vignettes/tximport/inst/doc/tximport.html).
+
+## Identifying the files
+
+The samples from this study have been *quantified* using `salmon`. For details on how this is done, please see the previous session on preparing fastq files for analysis.
+
+The script we used to run salmon (`run_salmon.sh`) created a separate folder for each sample (named according to the SRA ID), and inside each of these folders we find the salmon quantification file. Note that the salmon analysis produced many other files (e.g. log files), but we will only need the `quant.sf.gz` files for analysis.
+
+```{r}
+list.files("salmon_quant/SRR1552444/")
+```
+
+The function we are going to use to import the salmon files requires a `vector` comprising the paths to the files that are to be imported. To construct such a vector we can use the following code chunk. Furthermore, we can name each item in the vector according to the directory name. These names will be used eventually to name the columns of our count matrices.
 
 ```{r}
 dirs <- list.files(file.path("salmon_quant/"))
 quant_files <- paste0("salmon_quant/",dirs,"/quant.sf.gz")
 names(quant_files) <- dirs
+quant_files
 ```
+
+### Defining the transcript mapping
+
+The quant files are simple tab-delimited files that tabulate the counting results for each transcript in our chosen organism. Although we will use a specialised Bioconductor package (`tximport`) to import the counts for entire dataset into R, we can inspect the first of the files using the standard `read_tsv` function from the `readr` package.
+
+
 
 ```{r}
 library(readr)
 quants <- read_tsv(quant_files[1])
 head(quants)
+
+```
+
+In order for `tximport` to give *gene-level* counts, we need to supply a data frame that can be used to associate each transcript name with a gene identifier. **It is important to use a transcript file that corresponds to the name genome build as the file used to count the transcripts**. 
+
+We can check if the `gtf` file exists in the directory we expect by running the `file.exists` function; returning `TRUE` or `FALSE`
+```{r}
+gtf_file <- "ensembl_ref/Mus_musculus.GRCm38.91.chr.gtf.gz"
+file.exists(gtf_file)
+```
+
+If required, we can download from the Ensembl FTP site. 
+
+
+```{r eval=FALSE} 
+download.file("ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz",destfile = gtf_file)
+
 ```
 
 
+### Note on analysing your own data
+
+![images/download_gtf.png]
+
+If analysing your own data, you will have to locate the gtf file on the Ensembl FTP site. If you enter `ftp://ftp.ensembl.org/pub/release-91/gtf` into a web browser you will be able to navigate the site and find your organism of interest. By right-clicking on the name of the gtf you will be able to copy the URL and then paste into RStudio.
+
+```{r eval=FALSE}
+gtf_file <- "ensembl_ref/my_ref.gtf"
+download.file(PASTE_LINK_FROM_ENSEMBL_HERE,destfile = gtf_file)
+```
+
+### Creating a transcript database
+
+The Bioconducor website provides many pre-built transcript databases for some organisms (Human, Mouse,Rat etc)  which provide transcript definitions and allow users to query the locations of particular genes, exons and other genomic features. You may find a pre-built package that already has the transcript locations required to create the transcript mapping file. Check out the annotation section of the Bioconductor website - http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData and look for packages starting `TxDb...`
+
+However, it is quite easy to build such a database if we have a `gtf` file using the `GenomicFeatures` infrastructure.
+
 ```{r}
+## Could take a few minutes to run the makeTxDbFromGFF command
 library(GenomicFeatures)
-txdb <- makeTxDbFromGFF("ensembl_ref/Mus_musculus.GRCm38.91.chr.gtf.gz")
+txdb <- makeTxDbFromGFF(gtf_file)
+
+```
+
+The database has a number of predefined "keys" and "columns" that have to be specified when creating a query
+
+```{r}
+keytypes(txdb)
+```
+
+```{r}
+columns(txdb)
+```
+
+Sometimes we would want to query the positions for a limited set of selected genes (perhaps the results of a differential-expression analysis), but in this case we want the gene names that correspond to every transcript in the database. To get the names of all transcripts we can use the `keys` function. We then compose the query using the `select` function to return a data frame
+
+```{r}
 k <- keys(txdb, keytype="TXNAME")
-tx_map <- select(txdb, k, "GENEID", "TXNAME")
-
+tx_map <- select(txdb, keys = k, columns="GENEID", keytype = "TXNAME")
+head(tx_map)
 ```
 
-```{r}
-library(tidyr)
-quants <- separate(quants, Name, c("TXNAME","Number"),remove = FALSE)
-head(quants)
-```
+Such a data frame *should* be sufficient to allow us to use the `tximport` package. There is a bit of a problem though..
 
-```{r}
-library(dplyr)
-
-quants <- left_join(quants, tx_map, by="TXNAME")
-head(quants)
-```
-
-```{r}
-tx2gene <- dplyr:::select(quants, Name, GENEID)
-head(tx2gene)
-```
-
-```{r}
-any(is.na(tx2gene$GENEID))
-
-tx2gene <- tx2gene[!is.na(tx2gene$GENEID),]
-
-```
-
-
-```{r}
+```{r eval=FALSE}
 library(tximport)
-
+tx2gene <- tx_map
 txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene)
+```
+
+In this case R is reporting a useful error message; the IDs we have supplied in the `tx2gene` data frame do not correspond to the transcript names in our files.
+
+```{r}
+table(tx_map$TXNAME %in% quants$Name)
+```
+
+Fortunately the authors of `tximport` have recognised this as a common problem and added an argument to the `tximport` function that can be used to overcome the error.
+
+```{r}
+txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene,ignoreTxVersion = TRUE)
+```
+
+The resulting object is a simple `list` structure in R which contains a number of components that we can access using a `$` operator
+
+```{r}
 names(txi)
 ```
 
+
 ```{r}
 head(txi$abundance)
-
 ```
 
 ```{r}
@@ -161,6 +227,70 @@ all(rownames(sampleinfo) == colnames(txi$counts))
 ```
 
 
+This was a fairly simple fix, but we could have also used some functionality from the `tidyverse` collection of packages to make the names compatible.
+
+### Fixing the problem with transcript names - the hard way!
+
+None of the transcript names are matching up. If we look at the transcript names in the `quant` files they have a `.` symbol followed by a number after the transcript name. The `tidyr` package contains several useful functions for *tidying* a data frame. One function we will use in particular is to split a column of value that contain multiple pieces of information separated by a common character. In this case the character is "." but other common separating characters include `-`, `_`, `:`. The `separate` function is able to detect which character is being used.
+
+Here we create two new columns, `TXNAME` and `Number`. The `TXNAME` being the column that should match entries in the `tx_map` data frame.
+
+```{r}
+library(tidyr)
+quants <- separate(quants, Name, c("TXNAME","Number"),remove = FALSE)
+head(quants)
+```
+
+Another useful piece of `tidyverse` functionality is to join two tables together based on a common column. We want to create a data frame that has the transcript name as it appears in the quant files and the gene name. This can be achieved by a `left_join` to ensure that all the transcript IDs in the quant files have an entry in the combined table.
+
+N.B. those already familiar with R might have encountered the `merge` function for achieving a similar result.
+
+Here is a small, completely unrelated, example.
+
+```{r}
+library(dplyr)
+band_instruments
+band_members
+left_join(band_members, band_instruments)
+```
+
+
+
+```{r}
+quants <- left_join(quants, tx_map, by="TXNAME")
+head(quants)
+```
+
+To create the `tx2gene` we can pull out the columns that we require from this merged data frame. There is another `dplyr` function for doing this that has simpler syntax than the *"base R"* method of subsetting a data frame.
+
+```{r}
+tx2gene <- dplyr:::select(quants, Name, GENEID)
+head(tx2gene)
+```
+
+We might want to further check that there are no "missing values" in the Gene ID column and remove them from the data frame 
+
+```{r}
+any(is.na(tx2gene$GENEID))
+
+tx2gene <- filter(tx2gene, !is.na(GENEID))
+
+```
+
+
+```{r}
+library(tximport)
+
+txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene)
+
+```
+
+
+## Quality control of the imported counts
+
+We will be using the `DESeq2` library to analyse this dataset. As part of the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) you will see examples of importing count data from different sources. For this workflow we are going to import data from `tximport` with the `DESeqDataSetFromTximport` function along with the sample information that we created earlier. 
+
+A *design* for the experiment also needs to be specified. This will define how the differential expression analysis is carried out, but can be changed at a later stage so we will use `CellType` for now as our factor of interest.
 
 ```{r}
 library(DESeq2)
@@ -169,197 +299,84 @@ dds <- DESeqDataSetFromTximport(txi,
                                 design <- ~CellType)
 ```
 
-
-### Reading in the  count data
-
-We will first use the counts file as a starting point for our analysis. This data has already been aligned to the mouse genome. The command line tool featureCounts [@Liao2014] was used to count reads mapped to mouse genes from Refseq annotation (see the [paper](http://www.ncbi.nlm.nih.gov/pubmed/25730472) for details).
-
-Let's take a look at the data. You can use the `head` command to see the first 6 lines. In RStudio the `View` command will open the dataframe in a new tab. The `dim` command will tell you how many rows and columns the data frame has.
-
-```{r loadData}
-# Read the data into R
-seqdata <- read.delim("data/GSE60450_Lactation-GenewiseCounts.txt", stringsAsFactors = FALSE)
-head(seqdata)
-View(seqdata)
-dim(seqdata)
-```
-
-The `seqdata` object contains information about genes (one gene per row), the first column has the Entrez gene id, the second has the gene length and the remaining columns contain information about the number of reads aligning to the gene in each experimental sample. There are two replicates for each cell type and timepoint (detailed sample info can be found in file "GSE60450_series_matrix.txt" from the [GEO website](http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE60450)). 
-
-### Format the data
-
-We will be manipulating and reformatting the counts matrix into a suitable format for downstream analysis. The first two columns in the `seqdata` dataframe contain annotation information. We need to make a new matrix containing only the counts, but we can store the gene identifiers (the `EntrezGeneID` column) as rownames. We will add more annotation information about each gene later on in the workshop.
-
-```{r rowNames}
-head(seqdata)
-rownames(seqdata)[1:10]
-```
-
-
-Let's create a new data object, `countdata`, that contains only the counts for the 12 samples.  
-
-```{r createCountMatrix}
-# Remove first two columns from seqdata
-countdata <- seqdata[,-(1:2)]
-
-# Store EntrezGeneID as rownames
-rownames(countdata) <- seqdata[,1]
-
-View(countdata)
-```
-
-Now take a look at the column names
-
-```{r colNames}
-colnames(countdata)
-```
-
-These are the sample names which are pretty long so we'll shorten these to contain only the relevant information about each sample. We will use the `substr` command to extract the first 7 characters and use these as the colnames.
-
-```{r modifyColNames}
-substr("ThisIsAString", start=1, stop=5)
-# using substr, you can extract the samplename:
-colnames(countdata) <- substr(colnames(countdata), 1, 7)
-View(countdata)
-colnames(countdata)
-```
-
-Note that the column names are now the same as `SampleName` in the `sampleinfo` file. This is good because it means our sample information in `sampleinfo` is in the same order as the columns in `countdata`.
-
-```{r compareNames}
-colnames(countdata)==sampleinfo$SampleName
-
-all(colnames(countdata)==sampleinfo$SampleName)
-```
-
-
-## Filtering to remove lowly expressed genes
-
-Genes with very low counts across all libraries provide little evidence for differential expression and they interfere with some of the statistical approximations that are used later in the pipeline. They also add to the multiple testing burden when estimating false discovery rates, reducing power to detect differentially expressed genes. These genes should be filtered out prior to further analysis.
-
-There are a few ways to filter out lowly expressed genes. When there are biological replicates in each group, in this case we have a sample size of 2 in each group, we favour filtering on a minimum counts per million threshold present in at least 2 samples. Two represents the smallest sample size for each group in our experiment. In this dataset, we choose to retain genes if they are expressed at a counts-per-million (CPM) above 0.5 in at least two samples.
-
-```{r librarySizes}
-colSums(countdata)
-```
-
-We'll use the `cpm` function from the *edgeR* library [@robinson2010edgeR] to generate the CPM values and then filter. Note that by converting to CPMs we are normalising for the different sequencing depths for each sample.
-
-```{r getCPM}
-library(edgeR)
-# Obtain CPMs
-myCPM <- cpm(countdata)
-# Have a look at the output
-head(myCPM)
-
-col1sum <- sum(countdata[,1])/1000000
-countdata[1,1]/col1sum
-```
-
-
-```{r subsetThreshold}
-# Which values in myCPM are greater than 0.5?
-thresh <- myCPM > 0.5
-# This produces a logical matrix with TRUEs and FALSEs
-head(thresh)
-```
-
-
-```{r countPass}
-# Summary of how many TRUEs there are in each row
-# There are 11433 genes that have TRUEs in all 12 samples.
-rowSums(head(thresh))
-table(rowSums(thresh))
-```
-
-```{r subsetMatrix}
-# we would like to keep genes that have at least 2 TRUES in each row of thresh
-keep <- rowSums(thresh) >= 2
-summary(keep)
-```
-
-```{r subsetData}
-# Subset the rows of countdata to keep the more highly expressed genes
-counts.keep <- countdata[keep,]
-dim(countdata)
-dim(counts.keep)
-```
-
-A CPM of 0.5 is used as it corresponds to a count of 10-15 for the library sizes in this data set. If the count is any smaller, it is considered to be very low, indicating that the associated gene is not expressed in that sample. A requirement for expression in two or more libraries is used as each group contains two replicates. This ensures that a gene will be retained if it is only expressed in one group. Smaller CPM thresholds are usually appropriate for larger libraries. As a general rule, a good threshold can be chosen by identifying the CPM that corresponds to a count of 10, which in this case is about 0.5. You should filter with CPMs rather than filtering on the counts directly, as the latter does not account for differences in library sizes between samples.
-
-```{r plotCPMThreshold}
-# Let's have a look and see whether our threshold of 0.5 does indeed correspond to a count of about 10-15
-# We will look at the first sample
-plot(myCPM[,1], countdata[,1], xlab="CPM", ylab="Raw Count", main=colnames(myCPM)[1])
-# Add a vertical line at 0.5 CPM
-abline(v=0.5)
-
-
-
-# Let us limit the x and y-axis so we can actually look to see what is happening at the smaller counts
-plot(myCPM[,1],countdata[,1], xlab="CPM", ylab="Raw Count", main=colnames(myCPM)[1], 
-     ylim=c(0,50), xlim=c(0,3))
-# Add a vertical line at 0.5 CPM
-abline(v=0.5)
-```
-
-> ## Challenge 1 {.challenge}
->
-> 1. Plot the counts-per-million versus counts for the second sample.
-> 2. Add a vertical line at 0.5 and a horizontal line at 10.
-> 3. Add the lines again, colouring them blue
->
-> HINT: use the `col` parameter.
->
-
-**Solution**
-```{r solutionChallenge1, echo=FALSE}
-
-```
-
-## Convert counts to DESeq2 object
-
-Next we'll create a `DESeqDataSet` object. This is an object used by *DESeq2* to store count data. It has a number of slots for storing various parameters about the data.
-
+The object contains all the metadata for the experiment, along with the counts. 
 
 ```{r}
-### Create a DESeq2 object
-library(DESeq2)
-
-dds <- DESeqDataSetFromMatrix(counts.keep,
-                              colData = sampleinfo,
-                              design = ~CellType)
-
-dds
-
+colData(dds)
 ```
 
+### Visualising library sizes
 
-## Quality control
+We can look at a few different plots to check that the data is good quality, and that the samples are as we would expect. First, we can check how many reads we have for each sample in the `DESeqDataSet`. The counts themselves are accessed using the `assay` function; giving a matrix of counts. The sum of a particular column is therefore the total number of reads for that sample.
 
-Now that we have got rid of the lowly expressed genes and have our counts stored in a `DGEList` object, we can look at a few different plots to check that the data is good quality, and that the samples are as we would expect.
+```{r}
+sum(assay(dds)[,1])
+```
 
-### Library sizes and distribution plots
-
-First, we can check how many reads we have for each sample in the `DESeqDataSet`.
+A convenience function `colSums` exists for calculating the sum of each column in a matrix, returning a `vector` as a result.
 
 ```{r dgeLibrarySizes}
 colSums(assay(dds))
 
 ```
 
-We can also plot the library sizes as a barplot to see whether there are any major discrepancies between the samples more easily.
 
-```{r plotLibrarySizes}
+> ## Challenge 1 {.challenge}
+>
+> 1. Produce a bar plot to show the Millions of reads for each sample
+> 2. Change the names under the plot so they are the "Name" of the sample rather than Run Name
+> 3. Add a horizontal line at 20 million reads
 
-# The names argument tells the barplot to use the sample names on the x-axis
-# The las argument rotates the axis names
-barplot(colSums(assay(dds)), names=colData(dds)$SampleName, las=2, main="Barplot of library sizes")
-abline(h=20e6, lty=2)
-colSums(assay(dds))
+![](images/lib_size.png)
+
+### Filtering non-expressed genes
+
+The dataset is usually filtered at this stage to remove any genes that are not expressed. Although not strictly required for the DESeq2 differential expression algorithm, it can reduce the time and memory required to perform some of the analysis. Let's say that for a gene to be "expressed" in a particular sample we need to see 5 or more counts  
+
+
+```{r}
+is_expressed <- assay(dds) >= 5
+head(is_expressed)
 ```
 
-Count data is not normally distributed, so if we want to examine the distributions of the raw counts we need to log the counts. Next we'll use box plots to check the distribution of the read counts on the log2 scale. We can use the `vst` function from `DESeq2`to apply a *variance-stablising transformation*. The effect is to remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. The resulting counts have also been normalized with respect to library size or other normalization factors. For more details see the [DESeq2 vignette]( http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#count-data-transformations)
+R is happy to think of logical values (`TRUE` or `FALSE`) as the integers `0` or `1`. Therefore if we calculate the sum across a particular row it will give the number of samples that gene is expressed in.
+
+```{r}
+sum(is_expressed[1,])
+sum(is_expressed[2,])
+
+```
+
+In a similar manner to `colSums`, `rowSums` will give the sum of each row in a matrix and return the result as a `vector`.
+
+```{r}
+hist(rowSums(is_expressed),main="Number of samples a gene is expressed in",xlab="Sample Count")
+```
+
+It seems that genes are either expressed in all samples, or not expressed at all. We will decide to keep genes that are expressed in at least 2 samples.
+
+```{r}
+keep <- rowSums(assay(dds) >= 5) >= 2
+table(keep)
+dds <- dds[keep,]
+
+```
+
+### Visualising count distributions
+
+We typically use a `boxplot` to visualise difference the distributions of the columns of a numeric data frame. Applying the `boxplot` function to the raw counts from our dataset reveals something about the nature of the data; the distributions are dominated by a few genes with very large counts.
+
+```{r}
+boxplot(assay(dds))
+```
+
+```{r}
+boxplot(log10(assay(dds)))
+```
+
+
+
+ We can use the `vst` or `rlog` function from `DESeq2`to compensate for the effect of different library sizes and put the data on the log$_2$ scale. The effect is to remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. For more details see the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#count-data-transformations)
 
 
 
@@ -367,19 +384,10 @@ Count data is not normally distributed, so if we want to examine the distributio
 # Get log2 counts
 vsd <- vst(dds,blind=TRUE)
 # Check distributions of samples using boxplots
-boxplot(assay(vsd), xlab="", ylab="Log2 counts per million",las=2)
+boxplot(assay(vsd), xlab="", ylab="Log2 counts per million",las=2,main="Normalised Distributions")
 # Let's add a blue horizontal line that corresponds to the median logCPM
-abline(h=median(assay(vsd)), col="blue", main="Boxplots of logCPMs (unnormalised)")
+abline(h=median(assay(vsd)), col="blue")
 ```
-
-
-From the boxplots we see that overall the density distributions of raw log-intensities are not identical but still not very different. If a sample is really far above or below the blue horizontal line we may need to investigate that sample further.
-
-> ## Discussion {.challenge}
->
-> Do any samples appear to be different compared to the others?
->
-
 
 ### Heatmap of the sample-to-sample distances
 
@@ -390,28 +398,26 @@ Another use of the transformed data is sample clustering. Here, we apply the `di
 sampleDists <- dist(t(assay(vsd)))
 ```
 
-A heatmap of this distance matrix gives us an overview over similarities and dissimilarities between samples. We have to provide a hierarchical clustering hc to the heatmap function based on the sample distances, or else the heatmap function would calculate a clustering based on the distances between the rows/columns of the distance matrix.
+A heatmap of this distance matrix gives us an overview over similarities and dissimilarities between samples. By re-naming the rows and columns of the distance matrix we can make the plot easier to interpret.
 
 ```{r}
 library(RColorBrewer)
 library(pheatmap)
 sampleDistMatrix <- as.matrix(sampleDists)
-rownames(sampleDistMatrix) <- paste(vsd$CellType, vsd$Status, sep="-")
-colnames(sampleDistMatrix) <- NULL
+rownames(sampleDistMatrix) <- paste(colData(dds)$CellType, colData(dds)$Status, sep="-")
+colnames(sampleDistMatrix) <- colData(dds)$Name
 colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
 
 
 pheatmap(sampleDistMatrix,
-         clustering_distance_rows=sampleDists,
-         clustering_distance_cols=sampleDists,
          col=colors)
 ```
 
 
 
-### Principal component (PCA) plot and Multi-Dimensional Scaling (MDS) of the samples
+### Principal component (PCA) 
 
-Related to the distance matrix is the [(Principal Components Analysis) PCA](http://setosa.io/ev/principal-component-analysis/) plot, which shows the samples in the 2D plane spanned by their first two principal components. A principle components analysis is an example of an unsupervised analysis, where we don’t need to specify the groups. If your experiment is well controlled and has worked well, what we hope to see is that the greatest sources of variation in the data are the treatments/groups we are interested in. It is also an incredibly useful tool for quality control and checking for outliers
+Related to the distance matrix heatmap is the [(Principal Components Analysis) PCA](http://setosa.io/ev/principal-component-analysis/) plot, which shows the samples in the 2D plane spanned by their first two principal components. A principle components analysis is an example of an unsupervised analysis, where we don’t need to specify the groups. If your experiment is well controlled and has worked well, what we hope to see is that the greatest sources of variation in the data are the treatments/groups we are interested in. It is also an incredibly useful tool for quality control and checking for outliers
 
 `DESeq2` has a convenient `plotPCA` function for making the PCA plot, which makes use of the `ggplot2` graphics package.
 
@@ -424,26 +430,31 @@ plotPCA(vsd,intgroup="CellType")
 > 1. Is the plot based on all genes in the dataset? How can we change how many genes are used for the PCA analysis?
 > 2. Change the `intgroup` parameter so that both CellType and Status are used for grouping.
 > HINT: check the documentation for the `plotPCA` function.
-> 2. Is there something strange going on with the samples?
-> 3. Identify the two samples that don't appear to be in the right place.
+> 3. Is there something strange going on with the samples?
+> 4. Identify the two samples that don't appear to be in the right place.
+> 5. What other problems can you see with the metadata?
 
 ### Note about batch effects
 
-In our unsupervised analysis we see that the main source of variation is due to biological effects, and not technical variation such as when the libraries were sequenced. If we do observe high technical variation in our data, it is not a complete disaster provided that we have designed our experiment propery. In particular the [sva Bioconductor package](https://bioconductor.org/packages/release/bioc/vignettes/sva/inst/doc/sva.pdf) can correct for batch effects provided that representatives of the groups of interest appear in each batch. Alternatively, the batch or confounding factor may be incorporated into the differential expression analysis.
+In our unsupervised analysis we should see that the main source of variation is due to biological effects, and not technical variation such as when the libraries were sequenced. If we do observe high technical variation in our data, it is not a complete disaster provided that we have designed our experiment propery. In particular the [sva Bioconductor package](https://bioconductor.org/packages/release/bioc/vignettes/sva/inst/doc/sva.pdf) can correct for batch effects provided that representatives of the groups of interest appear in each batch. Alternatively, the batch or confounding factor may be incorporated into the differential expression analysis.
 
 ### Correcting the sample information
 
-Hopefully we have spotted a potential sample swap in the dataset. Such errors are not uncommon when handling large numbers of samples and sometimes we need to go back to the lab books and verify that a swap has been made. *If there is no supporting evidence for a swap then it can be safer to exclude the samples*. In this case, we are going to use a correct sample sheet.
+Hopefully we have spotted a potential sample swap in the dataset. The mislabelled samples are MCL1.DH, which is labelled as luminal but should be basal, and MCL1.LA, which is labelled as basal but should be luminal.  Such errors are not uncommon when handling large numbers of samples and sometimes we need to go back to the lab books and verify that a swap has been made. *If there is no supporting evidence for a swap then it can be safer to exclude the samples*. 
 
+Furthermore, the person creating the sample sheet has been inconsistent about the way that values of `CellType` and `Status` have been entered into the metadata. Such errors can be annoying when labelling plots, but have more serious consequences when attempting to fit statistical models to the data.
 
 
 ```{r correctSampleSheet}
-# There is a sample info corrected file in your data directory
-# Old sampleinfo
-sampleinfo
-# I'm going to write over the sampleinfo object with the corrected sample info
-sampleinfo <- read.delim("data/SampleInfo_Corrected.txt")
-sampleinfo
+library(stringr)
+sampleinfo_corrected <- sampleinfo
+
+sampleinfo_corrected <- mutate(sampleinfo_corrected, CellType = str_to_lower(CellType))
+sampleinfo_corrected <- mutate(sampleinfo_corrected, Status = str_trim(Status))
+sampleinfo_corrected <- mutate(sampleinfo_corrected, CellType = ifelse(Name == "MCL1-DH","basal",CellType))
+sampleinfo_corrected <- mutate(sampleinfo_corrected, CellType= ifelse(Name == "MCL1-LA","luminal",CellType))
+
+write.table(sampleinfo_corrected, file="meta_data/sampleInfo_corrected.txt",sep="\t",row.names = FALSE)
 ```
 
 > ## Challenge 3 {.challenge}
@@ -452,5 +463,42 @@ sampleinfo
 > 2. Re-run the plotPCA function on the new data and verify that the sample groups now look correct
 >
 
+### A note about "pipes" and ggplot2
 
+It is common practice when using a series of `dplyr` data frame manipulations (such as `mutate` above) to create a workflow with the `%>%` operation from the `magrittr` package. The result is a more-readable chunk of code, although the result is exactly the same.
+
+```{r}
+sampleinfo_corrected <- mutate(sampleinfo, CellType = str_to_lower(CellType)) %>% 
+  mutate(Status = str_trim(Status)) %>% 
+  mutate(CellType = ifelse(Name == "MCL1-DH","basal",CellType)) %>% 
+  mutate(CellType= ifelse(Name == "MCL1-LA","luminal",CellType))
+
+sampleinfo_corrected
+```
+
+The `plotPCA` function produces a `ggplot2` plot (rather than "base" graphics) and we can also get the function to return the data used to create the plot by changing the `returnData` argument.
+
+```{r}
+plot_data <- plotPCA(vsd,intgroup=c("CellType","Status"),returnData=TRUE)
+plot_data <- bind_cols(plot_data,sampleinfo_corrected)
+```
+
+With `ggplot2` plot can be created by mapping various *aesthetics* of the plot (colour, shape, x- and y-coordinates) to columns in the data frame.
+
+```{r}
+library(ggplot2)
+ggplot(plot_data, aes(x = PC1,y=PC2, col=CellType)) + geom_point()
+```
+
+Having the data in this form allows us to customise the plot in lots of ways
+
+```{r}
+ggplot(plot_data, aes(x = PC1,y=PC2, col=CellType,pch=Status)) + geom_point(size=5)
+
+```
+
+```{r}
+ggplot(plot_data, aes(x = PC1,y=PC2, col=CellType,pch=Status,label=Name)) + geom_point() + geom_text(alpha=0.4)
+
+```
 
