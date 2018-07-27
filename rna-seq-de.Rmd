@@ -51,7 +51,6 @@ Now that we are happy that we have normalised the data and that the quality look
 
 ```{r}
 library(DESeq2)
-library(edgeR)
 
 ```
 
@@ -61,34 +60,24 @@ library(edgeR)
 The previous section walked-through the pre-processing and transformation of the count data. Here, for completeness, we list the minimal steps required to process the data prior to differential expression analysis.
 
 ```{r eval=FALSE}
+library(tximport)
 library(DESeq2)
-library(edgeR)
-## Read the counts from the downloaded data
-seqdata <- read.delim("data/GSE60450_Lactation-GenewiseCounts.txt", stringsAsFactors = FALSE)
-#
-# Remove first two columns from seqdata
 
-countdata <- seqdata[,-(1:2)]
+dirs <- list.files(file.path("salmon_quant/"))
+quant_files <- paste0("salmon_quant/",dirs,"/quant.sf.gz")
+names(quant_files) <- dirs
 
-# Store EntrezGeneID as rownames
-rownames(countdata) <- seqdata[,1]
-countdata
-colnames(countdata) <- substr(colnames(countdata), 1, 7)
-countdata
-## Calculate the Counts Per Million measure
-myCPM <- cpm(countdata)
-## Identify genes with at least 0.5 cpm in at least 2 samples
-thresh <- myCPM > 0.5
-keep <- rowSums(thresh) >= 2
-# Subset the rows of countdata to keep the more highly expressed genes
-counts.keep <- countdata[keep,]
-## Convert to an edgeR object
-sampleinfo <- read.delim("data/SampleInfo_Corrected.txt")
+tx2gene <- read.csv("tx2gene.csv")
 
-dds <- DESeqDataSetFromMatrix(counts.keep,
-                              colData = sampleinfo,
-                              design = ~CellType)
+txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene,ignoreTxVersion = TRUE)
 
+sampleinfo <- read.delim("meta_data/sampleInfo_corrected.txt")
+
+dds <- DESeqDataSetFromTximport(txi, 
+                                colData = sampleinfo,
+                                design <- ~CellType)
+keep <- rowSums(assay(dds) >= 5) >= 2
+dds <- dds[keep,]
 ```
 
 We also have the output of the pre-processing section saved as an R object if you didn't manage to complete these steps.
@@ -99,52 +88,62 @@ load("Robjects/preprocessing.Rdata")
 ```
 
 
-### Overview of testing
 
-As we saw in the R introduction, there are many options for performing a test to assess the significance of data from different sample groups. Taking a toy example:-
-
-```{r}
-gene_counts <- c(rnorm(10,mean = 2,sd=1),
-                 rnorm(10, mean=4,sd=1))
-
-group <- c(rep("Treated",10),
-           rep("Control",10))
-
-boxplot(gene_counts ~ group)
-
-```
-
-However, we cannot naively apply such a test to RNA-seq data that are *count-based*. Much work in the microarray era was carried out on statistical analysis of gene expression data with the most-popular approach being that of the limma Bioconductor package. This package has been cited thousands of time and applies a *linear model* approach to the analysis of gene expression data. The [user guide](https://www.bioconductor.org/packages/devel/bioc/vignettes/limma/inst/doc/usersguide.pdf) is extensive and has many examples of applying linear model design to expression data. It is even possible to use limma on RNA-seq data provided that the data are [appropriately transformed](https://genomebiology.biomedcentral.com/articles/10.1186/gb-2014-15-2-r29). 
-
-For this workflow we are going to use `DESeq2` which uses a negative binomial distribution to model the data.
-
-
-### Differential Expression with DESeq2
+## Differential Expression with DESeq2
 
 In `DESeq2`, a differential expression analysis can be performed by using the `DESeq` function. This function requires a single parameter which is the `DESeqDataSet` object generated in the pre-processing steps describes. We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
-
-The function runs a couple of processing steps automatically to adjust for different library size and gene-wise variabiliy, which you can read about in the [DESeq2 vignette)[http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#the-deseq2-model].
-
-```{r}
-colData(dds)
-design(dds) 
-de <- DESeq(dds)
-
-```
 
 Typically we decide the design for the analysis when we create the DESeq2 objects, but it can be modified prior to the differential expression analysis
 
 ```{r}
+colData(dds)
 design(dds) <- ~CellType
 ```
 
 
-The results of the analysis can be obtained using the `results` function and displayed to the screen. Each row is a particular gene measured in the study (i.e. all genes in the organism being studies) and each column reports some aspect of the differential expression analysis for that gene. Note that all genes are reported. Not all genes will be statistically significant. At this stage the gene identifiers are not very informative, something we will fix in the next section. We also cannot easily identify genes that are differentially expressed.
+
+The function runs a couple of processing steps automatically to adjust for different library size and gene-wise variabiliy, which you can read about in the [DESeq2 vignette)[http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#the-deseq2-model].
+
+Firstly apply the median ratio normalisation method to compensate for differences in library sizes
+
+```{r}
+dds <- estimateSizeFactors(dds)
+
+```
+
+estimate the dispersion for each gene
+
+```{r}
+dds <- estimateDispersions(dds)
+```
+
+Apply statistical testing based on the negative binomial distribution.
+
+```{r}
+dds <- nbinomWaldTest(dds)
+```
+
+Fortunately, there is one convenient function that will apply the three steps
 
 ```{r}
 de <- DESeq(dds)
+
+```
+
+
+
+The results of the analysis can be obtained using the `results` function and displayed to the screen. Each row is a particular gene measured in the study (i.e. all genes in the organism being studies) and each column reports some aspect of the differential expression analysis for that gene. Note that all genes are reported. Not all genes will be statistically significant. At this stage the gene identifiers are not very informative, something we will fix in the next section. 
+
+```{r}
+results(de)
+```
+
+The output can be converted into a data frame and manipulated in the usual manner
+
+```{r}
+
 results.cellType <- as.data.frame(results(de))
-results.cellType
+head(results.cellType)
 
 ```
 
@@ -159,20 +158,9 @@ results.cellType
 
 
 
-```{r}
 
 
-```
-
-We can also incorporate the `log2FoldChange` values when we perform filtering 
-
-```{r}
-
-### Code to filter by log2 fold change
-```
-
-
-In this initial analyis `DESeq2` has automatically decided which member of our sample groups to use as our baseline( `basal` in this case) so that the log2 fold changes are reported with a positve value meaning higher expression in `luminal`. If we want to change this behaviour we can change the `contrast` argument in the `results` function
+In this initial analyis `DESeq2` has automatically decided which member of our sample groups to use as our baseline (`basal` in this case) so that the log2 fold changes are reported with a positve value meaning higher expression in `luminal`. If we want to change this behaviour we can change the `contrast` argument in the `results` function
 
 
 ```{r}
@@ -183,7 +171,7 @@ results(de, contrast=c("CellType","basal","luminal"))
 
 ```
 
-If we change to performing differential expression analysis on the `Status` variable then there are various contrasts that can be made; `pregnant` vs `lactate`, `lactate` vs `virgin` etc. When the `results` function is run the table that is displayed is for the contrast `virgin vs lactate`. The `resultsNames` function can tell us which other contrasts we can access.
+If we change to performing differential expression analysis on the `Status` variable then there are various contrasts that can be made; `pregnant` vs `lactation`, `lactation` vs `virgin` etc. When the `results` function is run the table that is displayed is for the contrast `virgin vs lactate`. The `resultsNames` function can tell us which other contrasts we can access.
 
 
 ```{r}
@@ -191,7 +179,7 @@ dds.status <- dds
 design(dds.status) <- ~Status
 de.status <- DESeq(dds.status)
 resultsNames(de.status)
-results.status <- results(de.status)
+results.status <- data.frame(results(de.status))
 ```
 
 A venn diagram is a common way of visualising the overlap between two genelists. We need to create a data frame where each column indicates whether each gene is differentially expressed in a particular contrast or not. To create such columns we can do a logical test on the adjusted p-values from our results tables.
@@ -214,7 +202,7 @@ vennDiagram(venn_data)
 
 ```
 
-
+The main assumption here is that the effect of the status is the same in both type of cells.
 
 
 
@@ -224,13 +212,13 @@ vennDiagram(venn_data)
 
 In particular, DESeq2 allows [multi-factor models](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#multi-factor-designs) which can account for other sources of variation in the data such as batches or gender.
 
-Lets suppose that we wanted the different between virgin and lactatin individuals, but controlling for `CellType`. The design for such an analysis would be:-
+Lets suppose that we wanted the different between virgin and lactatin individuals, but controlling for `CellType`. The main assumption being that the effect of `Status` is the same regardless of `CellType` The design for such an analysis would be:-
 
 ```{r}
 dds.mf <- dds
 design(dds.mf) <- ~CellType+Status
 de.mf <- DESeq(dds.mf)
-results.mf <- results(de.mf,contrast=c("Status","virgin","lactate"))
+results.mf <- results(de.mf,contrast=c("Status","virgin","lactation"))
 results.mf
 ```
 
