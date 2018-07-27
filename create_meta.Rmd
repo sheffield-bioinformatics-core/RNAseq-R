@@ -65,5 +65,7 @@ combinedInf$CellType[combinedInf$Name == "MCL1-LA"] <- "basal"
 write.table(combinedInf, file="meta_data/sampleInfo.txt",sep="\t",row.names=FALSE)
 
 
+combinedInf$CellType[c(3,4)] <- stringr:::str_to_title(as.character(combinedInf$CellType[c(3,4)]))
+combinedInf$Status[c(11,12)] <- paste0(" ", as.character(combinedInf$Status[c(11,12)]))
 ```
 
