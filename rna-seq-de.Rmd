@@ -28,20 +28,9 @@ This material has been created using the following resources:
 http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
 http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
 http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
 
-Data files downloaded from:  
-ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE60nnn/GSE60450/suppl/GSE60450_Lactation-GenewiseCounts.txt.gz
-http://bioinf.wehi.edu.au/software/MSigDB/mouse_c2_v5.rdata
-http://bioinf.wehi.edu.au/software/MSigDB/mouse_H_v5.rdata
 
-Data files:  
-sampleinfo.txt  
-GSE60450_Lactation-GenewiseCounts.txt  
-mouse_c2_v5.rdata  
-mouse_H_v5.rdata
-
-Data files available from: [https://figshare.com/s/1d788fd384d33e913a2a](https://figshare.com/s/1d788fd384d33e913a2a)
-You should download these files and place them in your `/data` directory.
 
 ## Differential expression with `DESeq2`
 
@@ -51,7 +40,7 @@ Now that we are happy that we have normalised the data and that the quality look
 
 ```{r}
 library(DESeq2)
-
+library(tximport)
 ```
 
 
@@ -59,9 +48,9 @@ library(DESeq2)
 
 The previous section walked-through the pre-processing and transformation of the count data. Here, for completeness, we list the minimal steps required to process the data prior to differential expression analysis.
 
+Note that although we spent some time looking at the quality of our data , these steps are not required prior to performing differential expression so are not shown here. Remember, `DESeq2` [requires raw counts](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts) so the `vst` transformation is not shown as part of this basic protocol.
+
 ```{r eval=FALSE}
-library(tximport)
-library(DESeq2)
 
 dirs <- list.files(file.path("salmon_quant/"))
 quant_files <- paste0("salmon_quant/",dirs,"/quant.sf.gz")
@@ -91,7 +80,7 @@ load("Robjects/preprocessing.Rdata")
 
 ## Differential Expression with DESeq2
 
-In `DESeq2`, a differential expression analysis can be performed by using the `DESeq` function. This function requires a single parameter which is the `DESeqDataSet` object generated in the pre-processing steps describes. We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
+We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
 
 Typically we decide the design for the analysis when we create the DESeq2 objects, but it can be modified prior to the differential expression analysis
 
@@ -106,58 +95,85 @@ The function runs a couple of processing steps automatically to adjust for diffe
 
 Firstly apply the median ratio normalisation method to compensate for differences in library sizes
 
-```{r}
+```{r eval=FALSE}
 dds <- estimateSizeFactors(dds)
 
 ```
 
 estimate the dispersion for each gene
 
-```{r}
+```{r eval=FALSE}
 dds <- estimateDispersions(dds)
 ```
 
 Apply statistical testing based on the negative binomial distribution.
 
-```{r}
+```{r eval=FALSE}
 dds <- nbinomWaldTest(dds)
 ```
 
 Fortunately, there is one convenient function that will apply the three steps
 
 ```{r}
-de <- DESeq(dds)
+de.cellType <- DESeq(dds)
 
 ```
 
 
 
-The results of the analysis can be obtained using the `results` function and displayed to the screen. Each row is a particular gene measured in the study (i.e. all genes in the organism being studies) and each column reports some aspect of the differential expression analysis for that gene. Note that all genes are reported. Not all genes will be statistically significant. At this stage the gene identifiers are not very informative, something we will fix in the next section. 
+The results of the analysis can be obtained using the `results` function and displayed to the screen. Each row is a particular gene measured in the study (i.e. all genes in the organism being studied) and each column reports some aspect of the differential expression analysis for that gene. Note that all genes are reported. At this stage the gene identifiers are not very informative, something we will fix in the next section. 
 
 ```{r}
-results(de)
+results(de.cellType)
 ```
 
-The output can be converted into a data frame and manipulated in the usual manner
+The output can be converted into a data frame and manipulated in the usual manner. It is recommended to use `dplyr` to manipulate the data frames with the standard set of operations detailed on the [dplyr cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
+
+- `select` to pick which columns to display
+- `filter` to restrict the rows
+- `mutate` to add new variables to the data frame
+- `arrange` to order the data frame according to values of a column
+
+However, `dpylr` does not like data frame that have rownames. We can use the `rownames_to_column` function from the `tibble` package to add an extra column that contains the Ensembl gene IDs.
 
 ```{r}
+library(dplyr)
+library(tibble)
+results.cellType <- as.data.frame(results(de)) %>% 
+  rownames_to_column("GeneID")  
 
-results.cellType <- as.data.frame(results(de))
-head(results.cellType)
-
+results.cellType
 ```
+
+
+```{r}
+arrange(results.cellType, padj) %>%  
+  head(n=10)
+```
+
+```{r}
+arrange(results.cellType, padj) %>%
+  write.csv("basal_vs_luminal_DESeq_all.csv")
+```
+
+
+```{r}
+arrange(results.cellType, padj) %>%
+  filter(padj < 0.05) %>% 
+  write.csv("basal_vs_luminal_DESeq_DE.csv")
+```
+
 
 > ## Challenge 1 {.challenge}
 >
-> 1. How many genes have an adjusted p-value less than 0.05?
-> 2. Produce a data frame where the rows are ordered according to adjusted p-value
-> 3. Write this new data frame to a `.csv` file
-> 4. Re-run the analysis to find differentially-expressed genes between *Virgin* and *Lactate*
-> HINT: you may need to use the `na.omit` function to ignore `NA` values in a vector
-> HINT: you can use the `order` function that we saw in the R introduction to re-order rows...
+> 1. Re-run the analysis to find differentially-expressed genes between the developmental stages *virgin* and *lactation*
+> 2. Write a csv file that contains results for the genes that have a p-value less than 0.05 and a log2 fold change more than 1, or less than -1.
+> HINT: So that we don't overwrite our results so far, it may be convenient to create a new `DESeqDataSet` object for the new differential expression analysis.
 
+```{r}
+dds.status <- dds
 
-
+```
 
 
 In this initial analyis `DESeq2` has automatically decided which member of our sample groups to use as our baseline (`basal` in this case) so that the log2 fold changes are reported with a positve value meaning higher expression in `luminal`. If we want to change this behaviour we can change the `contrast` argument in the `results` function
@@ -195,14 +211,8 @@ vennDiagram(venn_data)
 
 > ## Challenge 2 {.challenge}
 >
-> 1. Use a venn diagram to visualise the overlap in the genes found to be differentially expressed in the `pregnant vs lactate` and `virgin vs lactate` contrasts. 
+> 1. Use a venn diagram to visualise the overlap in the genes found to be differentially expressed in the `pregnant vs virgin` and ` lactation vs virgin` contrasts. 
 > 2. How many genes are in common?
-
-```{r}
-
-```
-
-The main assumption here is that the effect of the status is the same in both type of cells.
 
 
 
@@ -218,9 +228,18 @@ Lets suppose that we wanted the different between virgin and lactatin individual
 dds.mf <- dds
 design(dds.mf) <- ~CellType+Status
 de.mf <- DESeq(dds.mf)
-results.mf <- results(de.mf,contrast=c("Status","virgin","lactation"))
+results.mf <- results(de.mf,contrast=c("Status","lactation","virgin"))
 results.mf
 ```
 
+### Exporting normalized counts
 
+The `DESeq` workflow applies *median of ratios normalization* that accounts for differences in sequencing depth between samples. The user does not usually need to run this step. However, if you want a matrix of counts for some application outside of Bioconductor the values can be extracted from the `dds` object.
+
+```{r}
+dds <- estimateSizeFactors(dds) 
+countMatrix <-counts(dds, normalized=TRUE)
+head(countMatrix)
+write.csv(countMatrix,file="normalized_counts.csv")
+```
 

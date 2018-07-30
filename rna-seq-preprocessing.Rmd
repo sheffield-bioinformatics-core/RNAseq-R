@@ -289,7 +289,9 @@ txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene)
 
 ## Quality control of the imported counts
 
-We will be using the `DESeq2` library to analyse this dataset. As part of the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) you will see examples of importing count data from different sources. For this workflow we are going to import data from `tximport` with the `DESeqDataSetFromTximport` function along with the sample information that we created earlier. 
+We will be using the `DESeq2` library to analyse this dataset. As part of the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) you will see examples of importing count data from different sources. In all cases, [raw count data are expected](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts)
+
+For this workflow we are going to import data from `tximport` with the `DESeqDataSetFromTximport` function along with the sample information that we created earlier. 
 
 A *design* for the experiment also needs to be specified. This will define how the differential expression analysis is carried out, but can be changed at a later stage so we will use `CellType` for now as our factor of interest.
 
