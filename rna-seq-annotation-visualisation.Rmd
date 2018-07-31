@@ -21,9 +21,17 @@ knitr::opts_chunk$set(echo = TRUE)
 **Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
 Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016
 
+## Resources and data files
+
+This material has been created using the following resources:  
+http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
+http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
+http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
+
+
+
 Before starting this section, we will make sure we have all the relevant objects from the Differential Expression analysis present.
-
-
 
 ```{r}
 suppressPackageStartupMessages(library(DESeq2))
@@ -48,7 +56,7 @@ We can now have a list of genes ordered according to their evidence for being di
 library(dplyr)
 library(tibble)
 
-results.status <- as.data.frame(results(de.status)) %>% 
+results.status <- as.data.frame(results(de.mf,contrast=c("Status","lactation","virgin"))) %>% 
   rownames_to_column("ENSEMBL")
   
 
@@ -58,19 +66,34 @@ head(results.ordered)
 
 In `DESeq2`, the function plotMA shows the log2 fold changes attributable to a given variable over the mean of normalized counts for all the samples in the DESeqDataSet. Points will be colored red if the adjusted p value is less than 0.1. Points which fall out of the window are plotted as open triangles pointing either up or down.
 
-The log2 fold change for a particular comparison is plotted on the y-axis and the average of the counts normalized by size factor is shown on the x-axis (“M” for minus, because a log ratio is equal to log minus log, and “A” for average). Each gene is represented with a dot. Genes with an adjusted p value below a threshold (here 0.1, the default) are shown in red.
+The log2 fold change for a particular comparison is plotted on the y-axis and the average of the counts normalized by size factor is shown on the x-axis ("M" for minus, because a log ratio is equal to log minus log, and "A" for average). Each gene is represented with a dot. Genes with an adjusted p value below a threshold (here 0.1, the default) are shown in red.
 
 
 ```{r}
-plotMA(results(de.status))
+plotMA(results(de.mf,contrast=c("Status","lactation","virgin")))
 ```
 
 ***Note*** You may see an error message when trying to make the above MA plot. This could be because both `limma` and `DESeq2` have a function called `plotMA`, and R can sometimes pick the wrong function. To explictly use the `DESeq2` function you can use:-
 
 ```{r}
-DESeq2::plotMA(de.status)
+DESeq2:::plotMA(results(de.mf,contrast=c("Status","lactation","virgin")))
 ```
 
+MA-plots often display a fanning-effect at the left-hand side (genes with low numbers of counts) due to the high variability of the measurements for these genes. For more informative visualization and more accurate ranking of genes by effect size (the log fold change may sometimes be referred to as an effect size), the `DESeq2` authors recommend "shrinking" the log fold-changes which is available in DESeq2’s `lfcShrink` function. This results in more stable fold change values. The p-values are unaffected.
+
+```{r}
+res_LvsV <- lfcShrink(de.mf,contrast=c("Status","lactation","virgin"))
+plotMA(res_LvsV)
+```
+
+We will re-define our results object to use these new fold-changes.
+
+```{r}
+results.ordered <- as.data.frame(res_LvsV) %>% 
+  rownames_to_column("ENSEMBL") %>% 
+  arrange(padj)
+head(results.ordered)
+```
 
 Another common plot for displaying the results of a differential expression analysis is a *volcano plot*
 
@@ -84,14 +107,13 @@ degenes <- which(results.ordered$padj < 0.05)
 points(results.ordered$log2FoldChange[degenes],-log10(results.ordered$padj)[degenes],
        col="red",
        pch=16)
-
 ```
 
 
 It can also be useful to examine the counts of reads for a single gene across the groups. A simple function for making this plot is `plotCounts`, which normalizes counts by sequencing depth and adds a pseudocount of 1/2 to allow for log scale plotting. The counts are grouped by the variables in  `intgroup`, where more than one variable can be specified. Here we specify the gene which had the smallest p value from the results table created above. You can select the gene to plot by rowname or by numeric index:-
 
 ```{r}
-plotCounts(dds, "ENSMUSG00000024378",intgroup = c("Status"))
+plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"))
 ```
 
 
@@ -130,7 +152,7 @@ We are going to filter the database by a key or set of keys in order to extract 
 keytypes(org.Mm.eg.db)
 ```
 
-We should see `ENTREZID`, which is the type of key we are going to use in this case. If we are unsure what values are acceptable for the key, we can check what keys are valid with `keys`
+We should see `ENSEMBL`, which is the type of key we are going to use in this case. If we are unsure what values are acceptable for the key, we can check what keys are valid with `keys`
 
 ```{r}
 keys(org.Mm.eg.db, keytype="ENSEMBL")[1:10]
@@ -138,22 +160,28 @@ keys(org.Mm.eg.db, keytype="ENSEMBL")[1:10]
 
 
 
-For the top gene in our analysis the command would be:-
+For the top gene in our analysis the call to the function would be:-
 
 ```{r eval=FALSE}
-select(org.Mm.eg.db, keys="ENSMUSG00000024378",
+select(org.Mm.eg.db, keys="ENSMUSG00000000381",
        keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME")
 )
+
+
+### In case of errors, try
+### AnnotationDBI::select(org.Mm.eg.db, keys="ENSMUSG00000000381",keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME")
+
+
 
 ```
 
 
 
-To annotate our results, we definitely want gene symbols and perhaps the full gene name. Let's build up our annotation information in a separate data frame using the `select` function.
+To annotate our results, we definitely want gene symbols and perhaps the full gene name. Let's build up our annotation information into a new data frame using the `select` function.
 
 ```{r}
 anno <- select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
-              columns=c("ENSEMBL","SYMBOL","GENENAME"),
+              columns=c("SYMBOL","GENENAME"),
               keytype="ENSEMBL")
 # Have a look at the annotation
 anno
@@ -180,7 +208,7 @@ Fortunately, there are not too many so hopefully we won't lose too much informat
 
 ```{r}
 anno <- select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
-              columns=c("ENSEMBL","SYMBOL","GENENAME"),
+              columns=c("ENSEMBL","SYMBOL","GENENAME","ENTREZID"),
               keytype="ENSEMBL") %>% 
   filter(!duplicated(ENSEMBL))
 dim(anno)
@@ -190,7 +218,7 @@ dim(anno)
 We can bind in the annotation information to the `results` data frame. 
 
 ```{r}
-results.annotated <- left_join(results.ordered, ann,by="ENSEMBL")
+results.annotated <- left_join(results.ordered, anno,by="ENSEMBL")
 results.annotated
 
 ```
@@ -199,14 +227,14 @@ results.annotated
 We can save the results table using the `write.csv` function, which writes the results out to a csv file that you can open in excel.
 
 ```{r}
-write.csv(results.annotated,file="virgin_vs_lactation_DESeq_annotated",row.names=FALSE)
+write.csv(results.annotated,file="virgin_vs_lactation_DESeq_annotated.csv",row.names=FALSE)
 ```
 
 
 The gene names that we have discovered can now be added to any plots that we have created. However, we still have to use the Ensembl IDs when accessing the `DESeqDataSet` object.
 
 ```{r}
-plotCounts(dds, "ENSMUSG00000024378",intgroup = c("Status"),main="Stard4")
+plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"),main="Wap")
 ```
 
 
@@ -244,7 +272,7 @@ pheatmap(assay(vsd)[top_genes,],
 ```
 
 
-> ## Challenge 2{.challenge}
+> ## Challenge 1{.challenge}
 > 1. Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes
 > 2. Change the plot so that gene names are displayed rather than Entrez IDs
 > 3. Save the plot to a pdf file
@@ -252,7 +280,7 @@ pheatmap(assay(vsd)[top_genes,],
 
 ### Accessing the sample or clusters
 
-The heatmap displays relationships between samples and genes in our study as a useful visualisation. In this examoke we can easily identify which samples are most similar based on their expression patterns. However, for larger dataset this may be more problematic. We can extract data the sample relationships about if we manually perform the clustering steps used by `pheatmap`. First is to cluster the samples with the default distance matrix and clustering algorithms.
+The heatmap displays relationships between samples and genes in our study as a useful visualisation. In this example we can easily identify which samples are most similar based on their expression patterns. However, for larger dataset this may be more problematic. We can extract data the sample relationships about if we manually perform the clustering steps used by `pheatmap`. First is to cluster the samples with the default distance matrix and clustering algorithms.
 
 ```{r}
 mat <- assay(vsd)[top_genes,]
@@ -319,40 +347,63 @@ listAttributes(ensembl) %>%
 An advantage over the `org..` packages is that positional information can be retrieved
 
 ```{r}
-attributeNames <- c('ensembl_gene_id', 'entrezgene', 'external_gene_name','start_position','end_position','chromosome_name')
-# run the query
-annot <- getBM(attributes=attributeNames, 
-               filters = "ensembl_gene_id", 
-               values = results.ordered$ENSEMBL, 
-               mart = ensembl)
-annot <- filter(annot, !duplicated(ensembl_gene_id)) %>% 
-  rename("ENSEMBL" = ensembl_gene_id)
+attributeNames <- c('ensembl_gene_id', 'entrezgene', 'external_gene_name')
 
-results.annotated.biomart <- left_join(results.ordered, annot)
+getBM(attributes = attributeNames,
+      filters = "ensembl_gene_id",
+      values=top_genes,
+      mart=ensembl)
+```
+
+> ## Challenge 1{.challenge}
+> 1. Use biomaRt to create an data frame containing the entrezgene, gene symbol and genomic coordinates (chromosome, start, end) for the Ensembl IDs in the DESeq2 results
+> 2. Remove duplicates entries from the new data frame
+> 3. Join the biomaRt annotation to the DESeq2 results to produce a data frame with differential expression results and annotation
+> 4. Write the joined data frame to a csv file
+
+```{r}
 
 ```
+
 
 
 ### Brief Introduction to ggplot2
 
 The [`ggplot2`](http://ggplot2.tidyverse.org/) package has emerged as an attractive alternative to the traditional plots provided by base R. A full overview of all capabilities of the package is available from the [cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf).
 
+The `plotCounts` function that we saw earlier can be adjusted to return the data associated with the plot, which in-turn can be passed to a `ggplot2` function for customisable plots.
+
+- `plot_data` is our data frame containing the variables we wish to plot
+- `aes` creates a mpping between the variables in our data frame to the *aes*thetic proprties of the plot
+    + the x-axis is mapped to `Status`, y-axis is mapped to `count`
+- `geom_point` specifies the particular type of plot we want (in this case a scatter plot)
+    + see [the cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf) for other plot types
+
+
+```{r}
+plot_data <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("CellType","Status"),returnData = TRUE)
+plot_data
+
+ggplot(plot_data, aes(x = Status,y=log2(count),col=CellType)) + geom_point()
+```
+
+```{r}
+ggplot(plot_data, aes(x = Status,y=log2(count),col=Status)) + geom_point()  + facet_wrap(~CellType)
+```
+
+
+
 A simple scatter plot, equivalent to `plotMA` from before, can be generated as follows:-
 
 ```{r,fig.width=12,fig.height=5}
 library(ggplot2)
-df <- as.data.frame(results.ordered)
+df <- results.annotated
 ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point() 
 
 ```
 
 In brief:-
 
-- `results` is our data frame containing the variables we wish to plot
-- `aes` creates a mpping between the variables in our data frame to the *aes*thetic proprties of the plot
-    + the x-axis is mapped to `logCPM`, y-axis is mapped to `logFC`
-- `geom_point` specifies the particular type of plot we want (in this case a scatter plot)
-    + see [the cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf) for other plot types
 
 The real advantage of `ggplot2` is the ability to change the appearance of our plot by mapping other variables to aspects of the plot. For example, we could colour the points based on a p-value cut-off. The colours are automatically chosen by `ggplot2`, but we can specifiy particular values.
 
@@ -360,28 +411,25 @@ The real advantage of `ggplot2` is the ability to change the appearance of our p
 
 ggplot(df, aes(x = log2(baseMean), y=log2FoldChange,col=padj<0.05)) + geom_point() 
 
-ggplot(df, aes(x = log2(baseMean), y=log2FoldChange,col=padj<0.05)) + geom_point(alpha=0.4) +  scale_colour_manual(values=c("black","red"))
+ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point(aes(color=padj<0.05),alpha=0.4) +  scale_colour_manual(values=c("black","red"))
 
 ```
 
-The volcano plot can be constructed in a similar manner
+Text can also be added to the plot to indicate the names of particular genes of interest. A column can be added to the data frame used for plotting with a text label that can be associated with each position on the plot. The plot would quickly become too cluttered if we added too many labels, but we can put empty strings `""` for genes that we don't want to plot.
 
-```{r,fig.width=12,fig.height=5}
-ggplot(df, aes(x = log2FoldChange, y=-log10(padj))) + geom_point()
+
+```{r fig.wdith=12}
+N <- 10
+
+top_genes <- df$ENSEMBL[1:N]
+
+df<- mutate(df, Label=ifelse(df$ENSEMBL %in% top_genes, SYMBOL, ""))
+
+ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point(aes(color=padj<0.05),alpha=0.4,size=0.5) +  scale_colour_manual(values=c("black","red")) +  geom_text(aes(label=Label),col="blue",alpha=0.8)
+
+
 ```
 
-The `plotCounts` function that we saw earlier can be adjusted to return the data associated with the plot, which in-turn can be passed to a `ggplot2` function for customisable plots.
-
-```{r}
-plot_data <- plotCounts(dds, "ENSMUSG00000024378",intgroup = c("CellType","Status"),returnData = TRUE)
-plot_data
-
-ggplot(plot_data, aes(x = CellType,y=count,col=Status)) + geom_point() + geom_jitter(width = 0.1)
-```
-
-```{r}
-ggplot(plot_data, aes(x = CellType,y=count,col=Status)) + geom_point() + geom_jitter(width = 0.1) + facet_wrap(~CellType)
-```
 
 
 ## Retrieving Genomic Locations
@@ -411,7 +459,7 @@ columns(tx)
 The `select` function is used in the same manner as the `org.Mm.eg.db` packages. 
 
 
-> ## Challenge 3{.challenge}
+> ## Challenge 2{.challenge}
 >
 > Use the TxDb.Mmusculus.UCSC.mm10.knownGene package to retrieve the exon coordinates for the genes `50916`, `110308`, `12293` 
 >

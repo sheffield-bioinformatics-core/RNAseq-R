@@ -61,6 +61,7 @@ tx2gene <- read.csv("tx2gene.csv")
 txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene,ignoreTxVersion = TRUE)
 
 sampleinfo <- read.delim("meta_data/sampleInfo_corrected.txt")
+rownames(sampleinfo) <- sampleinfo$run
 
 dds <- DESeqDataSetFromTximport(txi, 
                                 colData = sampleinfo,
@@ -241,5 +242,11 @@ dds <- estimateSizeFactors(dds)
 countMatrix <-counts(dds, normalized=TRUE)
 head(countMatrix)
 write.csv(countMatrix,file="normalized_counts.csv")
+```
+
+
+
+```{r eval=FALSE}
+save(de.cellType,de.status,de.mf, file="Robjects/DE.Rdata")
 ```
 

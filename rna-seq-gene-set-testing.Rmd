@@ -19,24 +19,18 @@ bibliography: ref.bib
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**
-Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016
+**Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
+Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016 and modified by Cancer Research Uk Cambridge Centre for the [Functional Genomics Autumn School 2017](https://bioinformatics-core-shared-training.github.io/cruk-autumn-school-2017/)
 
-# Data set
+## Resources and data files
 
-- Organism: mouse
-- Tissue: mammary gland
-- Three conditions:
-    - virgin
-    - pregnant
-    - lactating
-- Two cell types:
-    - basal stem-cell enriched cells (B)
-    - committed luminal  cells  (L)
-- Six groups (3 conditions x 2 cell types) with 2 biological replicates per group
-- As described in:
-	- ['EGF-mediated induction of Mcl-1 at the switch to lactation is essential for alveolar cell survival' (Fu et al. 2015)](https://www.ncbi.nlm.nih.gov/pubmed/25730472) published in Nature Cell Biology, with both sequence and counts available from Gene Expression Omnibus database (GEO) under accession number [GSE60450](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE60450)
-	- [A DE-licious recipe for differential expression analyses of RNA-seq](http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf)
+This material has been created using the following resources:  
+http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
+http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
+http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
+
+This section also uses code from Stephen Turner's guide to fgsea https://stephenturner.github.io/deseq-to-fgsea/
 
 # Gene Set Testing
 
@@ -53,97 +47,125 @@ There are two different approaches one might use, and we will cover the theory b
     + RNA-seq
     
 
-## Theory Part I: Over-representation analysis
+### fgsea analysis
 
-- "Threshold-based": require defintion of a statistical threshold to define list of genes to test (e.g. FDR < 0.01)
-- Hypergeometric test or Fisher's Exact test generally used.
+The fgsea package is a free implementation of the Broad's GSEA software and is described in more detail in the package [vignette](http://www.bioconductor.org/packages/release/bioc/vignettes/fgsea/inst/doc/fgsea-tutorial.html) "fast preranked gene set enrichment analysis (GSEA)":
 
-The question we are asking here is;
+The GSEA analysis is performed by:
 
-> ***"Are the number of DE genes associated with Theme X significantly greater than what we might expect by chance alone?"***
+- (i) ranking all genes in the data set based on their correlation to the chosen phenotype,
+- (ii) identifying the rank positions of all members of the gene set, and 
+- (iii) calculating an enrichment score (ES) that represents the difference between the observed rankings and that which would be expected assuming a random rank distribution.
 
-Where Theme X could be genes belonging to a particular GO (Gene Onotology) term.
+> "After establishing the ES for each gene set across the phenotype, GSEA reiteratively randomizes the sample labels and retests for enrichment across the random classes. By performing repeated class label randomizations, the ES for each gene set across the true classes can be compared to the ES distribution from the random classes. Those gene sets that significantly outperform iterative random class permutations are considered significant." 
 
-Let's imagine that we have a bag full of balls. Each balls represents a gene in the *gene universe*. 
-- Paint the balls representing our selected list grey, and paint the rest red.
+The article describing the original software is available [here](http://www.pnas.org/content/102/43/15545.long) and there is also a [commentary on GSEA](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1266131/). 
 
-
-![](images/bag-and-balls.png)
-
-In this small example, we can define;
-
-- Total number of balls: 40
-- Total number of interesting (grey) balls: 10
-
-Now, lets select a number (say, 12) of the balls at random without seeing into the bag and look at what we get
-
-![](images/picked-balls.png)
-
-
-We have picked, at random, 8 grey balls. Using simulations, we can repeat the process and look at how many grey we get. We can (of course!) do this in R. In base R there is a family of functions that can generate random draws from various distributions; `rnorm`, `rbinom`, `rhyper` etc....
-
-The distribution of the data shows what the most-likely values are
+In addition to the GSEA software the Broad also provide a number of very well curated gene sets for testing against your data - the Molecular Signatures Database (MSigDB). Unfortunately, these are collections of human genes. However, these lists have been translated to mouse equivalents by the Walter+Eliza Hall Institutes Bioinformatics service and made avaialble for download. These gene sets use *Entrez ID* as their identifier.
 
 ```{r}
-#see ?rhyper for argument definition
-trials <- rhyper(10000,40,10,12)
-hist(trials)
+library(fgsea)
 ```
 
-We can count how many times each value is observed
 
 ```{r}
-table(trials)
+load("Robjects/LvsV_annotated.rdata")
+head(results.annotated)
 ```
 
-Dividing by the number of trials gives a probability of sorts
+An appealing feature of the method is that it does not require us to impose arbitrary cut-offs on the dataset to decide what is differentially-expressed or not. The steps in producing the input required for GSEA are i) retrieving the ranked statistics ii) naming each one according to Entrez ID.
 
 ```{r}
-table(trials)/10000
-
-```
-
-The probability of getting *at least* a certain number can also be computed
-
-```{r}
-cumsum(table(trials)/10000)
-1-cumsum(table(trials)/10000)
+gseaInput <- filter(results.annotated, !is.na(ENTREZID)) %>% 
+  arrange(stat)
+ranks <- pull(gseaInput,stat)
+names(ranks) <- gseaInput$ENTREZID
 ```
 
 
 
-Back to our example, the distribution of balls can be expressed as a contingency table, on which we can use a Fisher's exact test
+```{r}
+#plot(ranks)
+barplot(ranks)
+```
 
-Total grey balls: 10
-Total in subset: 12
+The Walter+Eliza Hall Institutes Bioinformatics service have made mouse versions of the MSigDB datasets available for download. We can download the file in R with the `file.download` function.
 
-|  | In Selection | Not in Selection | Total 
-------------- | -------------
-Grey  | 8 | 2 | 10
-Not Grey  |4 | 26 | 30
-Total | 12 | 28 | 40
+```{r}
+download.file("http://bioinf.wehi.edu.au/software/MSigDB/mouse_H_v5p2.rdata",destfile = "Robjects/mouse_H_v5p2.rdata")
 
-
-
-The formula for Fisher's exact test is defined with reference to the cells of the 2 x 2 table
-
-| | Selected | Not Selected | Row Total
-------------- | -------------
-Selected  | a | b | a +b 
-Not Selected  | c | d | c + d
-Column Total | a  + c | b + d | a + b + c + d (=n)
+```
 
 
+```{r}
+load("Robjects/mouse_H_v5p2.rdata")
+pathways <- Mm.H
+pathways[[1]]
+```
 
-The formula for Fishers exact test is;
+Conduct analysis:
 
-$$ p = \frac{\binom{a + b}{a}\binom{c +d}{c}}{\binom{n}{a +c}} = \frac{(a+b)!(c+d)!(a+c)!(b+d)!}{a!b!c!d!n!} $$
+```{r}
+library(fgsea)
+fgseaRes <- fgsea(pathways, ranks, minSize=15, maxSize = 500, nperm=1000)
+class(fgseaRes)
+dim(fgseaRes)
+#head(fgseaRes)
+```
 
-or less formally;
+```{r}
+fgseaResTidy <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(desc(NES))
 
-*P = (ways of choosing grey balls) X (ways of non-grey balls amongst subset) / ways of choosing subset*
+# Show in a nice table:
+fgseaResTidy 
+```
 
-Fortunately, we do not need to plug the numbers into these formulas manually and several packages for performing gene set testing exist which also account for the complexity of RNA-seq data.
+```{r}
+library(ggplot2)
+ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
+  geom_col(aes(fill=padj<0.05)) +
+  coord_flip() +
+  labs(x="Pathway", y="Normalized Enrichment Score",
+       title="Hallmark pathways NES from GSEA")
+```
+
+
+
+The enrichment plot will show where the genes belonging to a particular gene set are towards the top or the bottom of the genelist, and how the *enrichment score* is calculated across the dataset.
+
+```{r}
+plotEnrichment(pathways[["HALLMARK_OXIDATIVE_PHOSPHORYLATION"]],
+               ranks)
+```
+
+```{r}
+plotEnrichment(pathways[["HALLMARK_MYC_TARGETS_V1"]],ranks)
+```
+
+```{r}
+my_genes <- filter(results.annotated, ENTREZID %in% pathways[["HALLMARK_MYC_TARGETS_V1"]]) %>% 
+  pull(ENSEMBL)
+
+vsd <- vst(dds)
+mat <- assay(vsd)[my_genes,]
+mat <- mat - rowMeans(mat)
+dim(mat)
+rownames(sampleinfo) <- sampleinfo$run
+
+pheatmap(mat,
+         annotation_col = sampleinfo[,c("Status","CellType")])
+
+```
+
+```{r}
+pheatmap(mat[,order(colData(dds)$Status)],
+         annotation_col = sampleinfo[,c("Status","CellType")],cluster_cols = FALSE)
+
+```
+
+
 
 ## Gene Set Testing - competitive gene set tests
 
@@ -164,134 +186,29 @@ From the [GOseq vignette](https://www.bioconductor.org/packages/release/bioc/vig
 Create list of DEGs:
 
 ```{r}
-library(DESeq2)
-load("Robjects/DE.Rdata")
-## Make sure NA values are removed before continuing
-results.noNA <- results[!is.na(results$padj),]
-
-# Derive list of DEGs by filtering on adjusted p-value
-genes <- results.noNA$padj < 0.05
-
-# Add gene names to that list:
-names(genes) <- rownames(results.noNA)
-
-print(head(genes))
+genes <- results.annotated$padj < 0.05 & !is.na(results.annotated$padj)
+names(genes) <- results.annotated$ENSEMBL
 ```
+
 
 Fit the Probability Weighting Function (PWF):
 
 ```{r}
 library(goseq)
-
 #print(supportedGeneIDs())
 #print(supportedGenomes())
-
-pwf <- nullp(genes, "mm10","knownGene")
+pwf <- nullp(genes, "mm10","ensGene")
 ```
 
 Conduct gene set enrichment analysis:
 
 ```{r results="hide"}
 #?goseq
-go.results <- goseq(pwf, "mm10","knownGene")
+go.results <- goseq(pwf, "mm10","ensGene")
 go.results
 ```
 
-### fgsea analysis
 
-From the fgsea [vignette](http://www.bioconductor.org/packages/release/bioc/vignettes/fgsea/inst/doc/fgsea-tutorial.html) "fast preranked gene set enrichment analysis (GSEA)":
-
-This analysis is performed by:
-
-- (i) ranking all genes in the data set based on their correlation to the chosen phenotype,
-- (ii) identifying the rank positions of all members of the gene set, and 
-- (iii) calculating an enrichment score (ES) that represents the difference between the observed rankings and that which would be expected assuming a random rank distribution.
-
-"After establishing the ES for each gene set across the phenotype, GSEA reiteratively randomizes the sample labels and retests for enrichment across the random classes. By performing repeated class label randomizations, the ES for each gene set across the true classes can be compared to the ES distribution from the random classes. Those gene sets that significantly outperform iterative random class permutations are considered significant." [commentary on GSEA](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1266131/). The article describing the original software is available [here](http://www.pnas.org/content/102/43/15545.long).
-
-```{r}
-library(fgsea)
-```
-
-Create ranks:
-
-```{r}
-results.ord <- results[ order(-results[,"log2FoldChange"]), ]
-head(results.ord)
-ranks <- results.ord$log2FoldChange
-names(ranks) <- rownames(results.ord)
-head(ranks)
-```
-
-```{r}
-#plot(ranks)
-barplot(ranks)
-```
-
-Load pathways:
-
-```{r}
-load("data/mouse_H_v5.rdata")
-pathways <- Mm.H
-```
-
-Conduct analysis:
-
-```{r}
-library(fgsea)
-?fgsea
-fgseaRes <- fgsea(pathways, ranks, minSize=15, maxSize = 500, nperm=1000)
-class(fgseaRes)
-dim(fgseaRes)
-#head(fgseaRes)
-```
-
-Glance at results:
-
-```{r}
-head(fgseaRes[order(padj), ])
-```
-
-Plot outcome for the 'HALLMARK_MYOGENESIS' pathway:
-
-First find rank of the 'HALLMARK_MYOGENESIS' pathway genes in the sorted genes:
-
-```{r}
-
-# We will create a barplot of logFC for the sorted genes and add one vertical red bar for each gene in the 'HALLMARK_MYOGENESIS' pathway
-
-#pathways[["HALLMARK_MYOGENESIS"]]
-
-tmpInd <- match(pathways[["HALLMARK_MYOGENESIS"]],names(ranks))
-tmpInd <- tmpInd[!is.na(tmpInd)]
-
-#tmpInd
-
-ranks2 <- rep(0,length(ranks))
-ranks2[tmpInd] <- ranks[tmpInd]
-
-barplot(ranks2)
-```
-
-Create enrichment score plot:
-
-```{r}
-plotEnrichment(pathways[["HALLMARK_MYOGENESIS"]],
-               ranks)
-```
-
-Remember to check the [GSEA article](http://www.pnas.org/content/102/43/15545.full) for the complete explanation.
-
-Select top pathways and plot outcome for all these:
-
-```{r}
-topPathwaysUp <- fgseaRes[ES > 0][head(order(pval), n=10), pathway]
-topPathwaysDown <- fgseaRes[ES < 0][head(order(pval), n=10), pathway]
-topPathways <- c(topPathwaysUp, rev(topPathwaysDown))
-plotGseaTable(pathways[topPathways], ranks, fgseaRes, 
-              gseaParam = 0.5)
-?plotGseaTable
-```
 
 ## Creating Gene lists to use with an online tool
 
@@ -323,4 +240,3 @@ This file has one column which lists the genes that passed the threshold for sta
 ```{r}
 
 ```
-
