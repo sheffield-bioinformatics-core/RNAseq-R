@@ -115,7 +115,7 @@ names(quant_files) <- dirs
 quant_files
 ```
 
-### Defining the transcript mapping
+### Inspecting the salmon output
 
 The quant files are simple tab-delimited files that tabulate the counting results for each transcript in our chosen organism. Although we will use a specialised Bioconductor package (`tximport`) to import the counts for entire dataset into R, we can inspect the first of the files using the standard `read_tsv` function from the `readr` package.
 
@@ -127,6 +127,29 @@ quants <- read_tsv(quant_files[1])
 head(quants)
 
 ```
+
+
+Various methods have been proposed to account for the two main known biases in RNA-seq; library composition and gene length. A nice summary is presented on [this blog](https://www.rna-seqblog.com/rpkm-fpkm-and-tpm-clearly-explained/). The current favourite is *TPM* (transcripts per million) which is similar in concept to *RPKM*, but the different order in which operations are applied makes it easier to compare across samples.
+
+The *TPM* are giving in the table, but we can demonstrate the calculation in a few steps
+
+- divide the number of reads for each transcript by it's length (*reads per kilobase* - RPK)
+- sum the RPK values and divide by 1 million to get a scaling factor
+- divide the RPK values by the scaling factor to get the *TPM*
+
+
+```{r}
+rpk <- quants$NumReads / quants$EffectiveLength
+
+scale_factor <- sum(rpk) / 1e6
+
+tpm <- rpk / scale_factor
+
+```
+
+
+### Defining the transcript mapping
+
 
 In order for `tximport` to give *gene-level* counts, we need to supply a data frame that can be used to associate each transcript name with a gene identifier. **It is important to use a transcript file that corresponds to the name genome build as the file used to count the transcripts**. 
 
@@ -205,6 +228,8 @@ table(tx_map$TXNAME %in% quants$Name)
 Fortunately the authors of `tximport` have recognised this as a common problem and added an argument to the `tximport` function that can be used to overcome the error.
 
 ```{r}
+library(tximport)
+tx2gene <- tx_map
 txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene,ignoreTxVersion = TRUE)
 ```
 
@@ -212,11 +237,6 @@ The resulting object is a simple `list` structure in R which contains a number o
 
 ```{r}
 names(txi)
-```
-
-
-```{r}
-head(txi$abundance)
 ```
 
 ```{r}
@@ -287,9 +307,17 @@ txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene)
 ```
 
 
+
+
 ## Quality control of the imported counts
 
-We will be using the `DESeq2` library to analyse this dataset. As part of the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) you will see examples of importing count data from different sources. In all cases, [raw count data are expected](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts)
+We will be using the `DESeq2` library to analyse this dataset. As part of the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) you will see examples of importing count data from different sources. In all cases, [raw count data are expected](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts). If TPM values are desired for some other application, we can extract them from the `tximport` object. These are the transcript-level TPM values that we saw earlier in the quant files that have been summarised to the gene-level.
+
+```{r}
+tpm <- txi$abundance
+write.csv(tpm, file="tpm_values.csv",quote=FALSE)
+```
+
 
 For this workflow we are going to import data from `tximport` with the `DESeqDataSetFromTximport` function along with the sample information that we created earlier. 
 
