@@ -311,13 +311,7 @@ txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene)
 
 ## Quality control of the imported counts
 
-We will be using the `DESeq2` library to analyse this dataset. As part of the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) you will see examples of importing count data from different sources. In all cases, [raw count data are expected](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts). If TPM values are desired for some other application, we can extract them from the `tximport` object. These are the transcript-level TPM values that we saw earlier in the quant files that have been summarised to the gene-level.
-
-```{r}
-tpm <- txi$abundance
-write.csv(tpm, file="tpm_values.csv",quote=FALSE)
-```
-
+We will be using the `DESeq2` library to analyse this dataset. As part of the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) you will see examples of importing count data from different sources. In all cases, [raw count data are expected](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts). 
 
 For this workflow we are going to import data from `tximport` with the `DESeqDataSetFromTximport` function along with the sample information that we created earlier. 
 
@@ -335,6 +329,24 @@ The object contains all the metadata for the experiment, along with the counts.
 ```{r}
 colData(dds)
 ```
+
+
+We will be using these raw counts throughout the workshop and transforming them using methods in the `DESeq2` package. If TPM values are desired for some other application, we can extract them from the `tximport` object. These are the transcript-level TPM values that we saw earlier in the quant files that have been summarised to the gene-level.
+
+```{r}
+tpm <- txi$abundance
+write.csv(tpm, file="tpm_values.csv",quote=FALSE)
+```
+
+At the time of writing, *TPM* is the recommended way of transforming RNA-seq counts to account for gene length and library composition biases. DESeq2 also provides methods for extracting normalised counts as *FPKM* (fragments per kilobase per million mapped fragments) and *FPM* (fragments per million mapped fragments) which might be required for some other analysis or visualisation outside of Bioconductor or `DESeq2`.
+
+```{r}
+fpm <- fpm(dds)
+write.csv(fpm, file="fpm_values.csv",quote=FALSE)
+fpkm <- fpkm(dds)
+write.csv(fpkm, file="fpkm_values.csv",quote=FALSE)
+```
+
 
 ### Visualising library sizes
 
