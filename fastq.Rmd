@@ -115,5 +115,5 @@ hisat2 -q -x GRCm38_chr19 fastq_files/SRR1552444.fastq.gz -S aligned_reads/SRR15
 
 ## References
 
-[https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html](DESeq2 tutorial from Bioconductor 2018 conference)
+[DESeq2 tutorial from Bioconductor 2018 conference](https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html)
 
