@@ -12,7 +12,7 @@ RUN wget http://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.3
 RUN unzip fastqc_v0.11.3.zip
 RUN chmod 755 FastQC/fastqc
 RUN ln -s $(pwd)/FastQC/fastqc /usr/bin/fastqc
-RUN apt-get install -y bowtie2 samtools default-jre build-essential python-dev
+RUN apt-get install -y bowtie2 samtools default-jre build-essential python-dev zlib1g-dev  
 ## installing latest version of SRA toolkit
 RUN wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.8.1-3/sratoolkit.2.8.1-3-ubuntu64.tar.gz
 RUN gunzip sratoolkit.2.8.1-3-ubuntu64.tar.gz
@@ -32,6 +32,12 @@ RUN ln -s /tmp/salmon-0.11.0-linux_x86_64/bin/salmon /usr/bin
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python get-pip.py
 RUN pip install multiqc
+RUN pip install cython
+RUN pip install --user --upgrade cutadapt
+RUN pip install HTSeq
+
+RUN chmod +x ~/.local/bin/cutadapt
+RUN ln -s ~/.local/bin/cutadapt /usr/bin/cutadapt
 RUN wget http://ccb.jhu.edu/software/hisat2/dl/hisat2-2.1.0-Linux_x86_64.zip
 RUN unzip hisat2-2.1.0-Linux_x86_64.zip
 RUN ln -s /tmp/hisat2-2.1.0/hisat2 /usr/bin
@@ -40,12 +46,42 @@ RUN apt-get install -y tophat bowtie2
 RUN wget -O subread.tar.gz https://sourceforge.net/projects/subread/files/subread-1.6.3/subread-1.6.3-Linux-x86_64.tar.gz/download
 RUN tar zxvf subread.tar.gz
 RUN ln -s /tmp/subread-1.6.3-Linux-x86_64/bin/* /usr/bin
+
+WORKDIR /tmp
+RUN wget http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.36.zip
+RUN unzip Trimmomatic-0.36.zip
+ENV TRIMMOMATIC /tmp/Trimmomatic-0.36/trimmomatic-0.36.jar
+
+
+RUN wget https://github.com/pachterlab/kallisto/releases/download/v0.45.0/kallisto_linux-v0.45.0.tar.gz
+RUN tar zxvf kallisto_linux-v0.45.0.tar.gz
+RUN ln -s /tmp/kallisto_linux-v0.45.0/kallisto /usr/bin/
+
+RUN wget http://cole-trapnell-lab.github.io/cufflinks/assets/downloads/cufflinks-2.2.1.Linux_x86_64.tar.gz
+RUN tar zxvf cufflinks-2.2.1.Linux_x86_64.tar.gz
+RUN ln -s /tmp/cufflinks-2.2.1.Linux_x86_64/gtf_to_sam /usr/bin
+RUN ln -s /tmp/cufflinks-2.2.1.Linux_x86_64/cuffcompare /usr/bin
+RUN ln -s /tmp/cufflinks-2.2.1.Linux_x86_64/cuffdiff /usr/bin
+RUN ln -s /tmp/cufflinks-2.2.1.Linux_x86_64/cuffmerge /usr/bin
+RUN ln -s /tmp/cufflinks-2.2.1.Linux_x86_64/cuffnorm /usr/bin
+RUN ln -s /tmp/cufflinks-2.2.1.Linux_x86_64/gffread /usr/bin
+RUN ln -s /tmp/cufflinks-2.2.1.Linux_x86_64/cuffquant /usr/bin
+
+RUN wget https://github.com/deweylab/RSEM/archive/v1.3.1.tar.gz
+RUN tar zxvf v1.3.1.tar.gz
+WORKDIR RSEM-1.3.1 
+RUN make
+RUN make install 
+
+## Tidy up to remove temporary files etx
+
 RUN rm /home//participant/Course_Materials/data/chr*
 RUN rm /home//participant/Course_Materials/data/targets2.txt
 RUN rm /tmp/*.zip
 RUN rm /tmp/*.tar
 RUN rm /tmp/*.tar.gz
 WORKDIR /home//participant/Course_Materials/
+
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ensembl_ref/
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz -P ensembl_ref
 #RUN salmon index -i salmon_ref/GRCm38_chr1 -t ensembl_ref/Mus_musculus.GRCm38.cdna.all.fa.gz
