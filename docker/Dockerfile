@@ -40,13 +40,18 @@ RUN apt-get install -y tophat bowtie2
 RUN wget -O subread.tar.gz https://sourceforge.net/projects/subread/files/subread-1.6.3/subread-1.6.3-Linux-x86_64.tar.gz/download
 RUN tar zxvf subread.tar.gz
 RUN ln -s /tmp/subread-1.6.3-Linux-x86_64/bin/* /usr/bin
+RUN rm /home//participant/Course_Materials/data/chr*
+RUN rm /home//participant/Course_Materials/data/targets2.txt
+RUN rm /tmp/*.zip
+RUN rm /tmp/*.tar
+RUN rm /tmp/*.tar.gz
 WORKDIR /home//participant/Course_Materials/
-RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ensembl_ref/
-RUN wget ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz -P ensembl_ref
-RUN salmon index -i salmon_ref/GRCm38_chr1 -t ensembl_ref/Mus_musculus.GRCm38.cdna.all.fa.gz
-RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz -P ensembl_ref/
-RUN gunzip ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz
-RUN mkdir hisat_ref
-RUN hisat2-build ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa hisat_ref/GRCm38_chr19_hisat
+#RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ensembl_ref/
+#RUN wget ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz -P ensembl_ref
+#RUN salmon index -i salmon_ref/GRCm38_chr1 -t ensembl_ref/Mus_musculus.GRCm38.cdna.all.fa.gz
+#RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz -P ensembl_ref/
+#RUN gunzip ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz
+#RUN mkdir hisat_ref
+#RUN hisat2-build ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa hisat_ref/GRCm38_chr19_hisat
 
 
