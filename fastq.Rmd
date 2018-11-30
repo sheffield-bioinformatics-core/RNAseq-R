@@ -1,5 +1,5 @@
 ---
-title: "Retrieving fastq files, Quality Assessment and counting"
+title: "Working with fastq files; Quality Assessment, alignment and counting"
 author: "Mark Dunning"
 date: "25 July 2018"
 output: html_document
@@ -10,37 +10,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Command-line analysis
-
-
-## Retrieve the fastq file from Sequencing Read Archive (SRA)
-
-We can download a fastq file from the Short Read Archive, provided we know it's location, using a `wget` unix command
-
-```{bash eval=FALSE}
-
-### DO NOT RUN
-wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByStudy/sra/SRP/SRP045/SRP045534/SRR1552444/SRR1552444.sra -P sra_data/
-```
-
-
-The ftp site for Sequencing read archive can be accessed at `ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByStudy/sra/SRP/`
-
-from there you can navigate to the folder containing a particular sequencing run
-
-
-## Extract the fastq
-
-The `sra-toolkit` provides various utilities for dealing with files in this format, including converting to the more popular `fastq` format.
-
-```{bash eval=FALSE}
-## DO NOT RUN - it will take too long
-fastq-dump sra_data/SRR1552444.sra -O fastq_files
-```
-
-```{bash}
-gzip fastq_files/SRR1552444.fastq
-```
-
 
 ## Run the fastqc tool
 
@@ -75,7 +44,7 @@ salmon index -i salmon_ref/GRCm38 -t ensembl_ref/Mus_musculus.GRCm38.cdna.all.fa
 
 ```{bash eval=FALSE}
 salmon quant -i salmon_ref/GRCm38 --libType A  \
---gcBias  -r fastq_files/SRR1552444.fastq.gz -o SRR1552444
+--gcBias  -r fastq_files/SRR1552444.fastq.gz -o quant/SRR1552444
 
 ```
 
@@ -104,12 +73,42 @@ done
 
 ```{bash}
 mkdir aligned_reads
-wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz
-gunzip Mus_musculus.GRCm38.dna.chromosome.19.fa.gz
-hisat2-build Mus_musculus.GRCm38.dna.chromosome.19.fa.gz GRCm38_chr19_hisat
-hisat2 -q -x GRCm38_chr19 fastq_files/SRR1552444.fastq.gz -S aligned_reads/SRR1552444.sam
+wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz -P ensembl_ref/
+gunzip ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz
+hisat2-build ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz hisat_ref/GRCm38_chr19_hisat
+hisat2 -q -x hisat_ref/GRCm38_chr19 fastq_files/SRR1552444.fastq.gz -S aligned_reads/SRR1552444.sam
 
 
+```
+
+
+## Retrieve the fastq file from Sequencing Read Archive (SRA)
+
+We can download a fastq file from the Short Read Archive, provided we know it's location, using a `wget` unix command
+
+```{bash eval=FALSE}
+
+### DO NOT RUN
+wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByStudy/sra/SRP/SRP045/SRP045534/SRR1552444/SRR1552444.sra -P sra_data/
+```
+
+
+The ftp site for Sequencing read archive can be accessed at `ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByStudy/sra/SRP/`
+
+from there you can navigate to the folder containing a particular sequencing run
+
+
+## Extract the fastq
+
+The `sra-toolkit` provides various utilities for dealing with files in this format, including converting to the more popular `fastq` format.
+
+```{bash eval=FALSE}
+## DO NOT RUN - it will take too long
+fastq-dump sra_data/SRR1552444.sra -O fastq_files
+```
+
+```{bash}
+gzip fastq_files/SRR1552444.fastq
 ```
 
 
