@@ -3,8 +3,6 @@ MAINTAINER Mark Dunning<m.j.dunning@sheffield.ac.uk>
 RUN rm -rf /var/lib/apt/lists/*
 RUN apt-get update 
 RUN apt-get install --fix-missing -y git wget unzip
-###Get repository of the course. Install data and R packages
-RUN mkdir -p /home/participant/Course_Materials
 #RUN git clone https://github.com/sheffield-bioinformatics-core/RNAseq-R.git /home/participant/Course_Materials
 #RUN R -f /home/participant/Course_Materials/install_bioc_packages.R
 WORKDIR /tmp
@@ -18,13 +16,7 @@ RUN wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/2.8.1-3/sratoolkit.2.8.1-3-u
 RUN gunzip sratoolkit.2.8.1-3-ubuntu64.tar.gz
 RUN tar xvf sratoolkit.2.8.1-3-ubuntu64.tar
 RUN ln -s /tmp/sratoolkit.2.8.1-3-ubuntu64/bin/* /usr/bin/
-RUN apt-get install unzip
-RUN wget https://ndownloader.figshare.com/articles/3219673?private_link=f5d63d8c265a05618137 -O fastq.zip
-RUN unzip fastq.zip -d /home/participant/Course_Materials/data/
-RUN rm fastq.zip
-#RUN wget https://ndownloader.figshare.com/articles/3219685?private_link=1d788fd384d33e913a2a -O raw.zip
-#RUN unzip raw.zip -d /home/participant/Course_Materials/data/
-#RUN rm raw.zip
+
 RUN wget https://github.com/COMBINE-lab/salmon/releases/download/v0.11.0/salmon-0.11.0-linux_x86_64.tar.gz
 RUN tar xvzf salmon-0.11.0-linux_x86_64.tar.gz
 RUN chmod +x /tmp/salmon-0.11.0-linux_x86_64/bin/salmon
@@ -73,14 +65,38 @@ WORKDIR RSEM-1.3.1
 RUN make
 RUN make install 
 
-## Tidy up to remove temporary files etx
+## Tidy up to remove temporary files etc
 
-RUN rm /home//participant/Course_Materials/data/chr*
-RUN rm /home//participant/Course_Materials/data/targets2.txt
 RUN rm /tmp/*.zip
 RUN rm /tmp/*.tar
 RUN rm /tmp/*.tar.gz
-WORKDIR /home//participant/Course_Materials/
+
+
+
+RUN useradd dcuser -m -d /home/dcuser
+RUN chown dcuser /home/dcuser
+
+USER dcuser
+RUN mkdir -p /home/dcuser/dc_sample_data
+RUN mkdir -p /home/dcuser/rnaseq_data
+
+COPY dc_sample_data.zip /home/dcuser/dc_sample_data
+WORKDIR /home/dcuser/dc_sample_data
+RUN unzip dc_sample_data.zip
+RUN rm dc_sample_data.zip
+
+
+RUN wget https://ndownloader.figshare.com/articles/3219673?private_link=f5d63d8c265a05618137 -O fastq.zip
+
+RUN unzip fastq.zip -d /home/dcuser/rnaseq_data/
+RUN rm fastq.zip
+RUN rm /home/dcuser/rnaseq_data/chr1*
+RUN rm /home/dcuser/rnaseq_data/targets2.txt
+
+
+WORKDIR /home/dcuser
+
+
 
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ensembl_ref/
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz -P ensembl_ref
