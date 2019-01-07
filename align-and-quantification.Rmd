@@ -75,7 +75,7 @@ The command `hisat2-build` is used to take the reference sequence and create an 
 
 The index step only needs to be run once for a particular genome versions. You can use the same index to align multiple samples.
 
-**Note that the following index procedure make take a few minutes to run**
+**Note that the following index procedure may take a few minutes to run**
 
 ```{bash eval=FALSE}
 gunzip ref_data/Mus_musculus.GRCm38.dna.chromosome.1.fa.gz

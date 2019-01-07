@@ -185,7 +185,7 @@ The Bioconducor website provides many pre-built transcript databases for some or
 
 However, it is quite easy to build such a database if we have a `gtf` file using the `GenomicFeatures` infrastructure.
 
-```{r}
+```{r message=FALSE}
 ## Could take a few minutes to run the makeTxDbFromGFF command
 library(GenomicFeatures)
 txdb <- makeTxDbFromGFF(gtf_file)

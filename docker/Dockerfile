@@ -86,17 +86,20 @@ RUN unzip dc_sample_data.zip
 RUN rm dc_sample_data.zip
 
 
-RUN wget https://ndownloader.figshare.com/articles/3219673?private_link=f5d63d8c265a05618137 -O fastq.zip
+#RUN wget https://ndownloader.figshare.com/articles/3219673?private_link=f5d63d8c265a05618137 -O fastq.zip
 
-RUN unzip fastq.zip -d /home/dcuser/rnaseq_data/
-RUN rm fastq.zip
-RUN rm /home/dcuser/rnaseq_data/chr1*
-RUN rm /home/dcuser/rnaseq_data/targets2.txt
+#RUN unzip fastq.zip -d /home/dcuser/rnaseq_data/
+#RUN rm fastq.zip
+#RUN rm /home/dcuser/rnaseq_data/chr1*
+#RUN rm /home/dcuser/rnaseq_data/targets2.txt
 
+COPY downsampled_fastq.zip /home/dcuser/rnaseq_data
+WORKDIR /home/dcuser/rnaseq_data
 
-WORKDIR /home/dcuser
+RUN unzip downsampled_fastq.zip
+RUN rm downsampled_fastq.zip
 
-
+WORKDIR /home/dcuser/
 
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ensembl_ref/
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz -P ensembl_ref
