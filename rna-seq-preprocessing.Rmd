@@ -27,10 +27,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Resources and data files
 
 This material has been created using the following resources:  
-http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
-http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
-http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
-https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
+
+- http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
+- http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
+- http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+- https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
 
 
 ## Overview
@@ -102,9 +103,6 @@ The samples from this study have been *quantified* using `salmon`. For details o
 
 The script we used to run salmon (`run_salmon.sh`) created a separate folder for each sample (named according to the SRA ID), and inside each of these folders we find the salmon quantification file. Note that the salmon analysis produced many other files (e.g. log files), but we will only need the `quant.sf.gz` files for analysis.
 
-```{r}
-list.files("salmon_quant/SRR1552444/")
-```
 
 The function we are going to use to import the salmon files requires a `vector` comprising the paths to the files that are to be imported. To construct such a vector we can use the following code chunk. Furthermore, we can name each item in the vector according to the directory name. These names will be used eventually to name the columns of our count matrices.
 
@@ -155,7 +153,7 @@ In order for `tximport` to give *gene-level* counts, we need to supply a data fr
 
 We can check if the `gtf` file exists in the directory we expect by running the `file.exists` function; returning `TRUE` or `FALSE`
 ```{r}
-gtf_file <- "ensembl_ref/Mus_musculus.GRCm38.91.chr.gtf.gz"
+gtf_file <- "Mus_musculus.GRCm38.91.chr.gtf.gz"
 file.exists(gtf_file)
 ```
 
@@ -266,18 +264,8 @@ Another useful piece of `tidyverse` functionality is to join two tables together
 
 N.B. those already familiar with R might have encountered the `merge` function for achieving a similar result.
 
-Here is a small, completely unrelated, example.
-
 ```{r}
 library(dplyr)
-band_instruments
-band_members
-left_join(band_members, band_instruments)
-```
-
-
-
-```{r}
 quants <- left_join(quants, tx_map, by="TXNAME")
 head(quants)
 ```
@@ -317,7 +305,7 @@ For this workflow we are going to import data from `tximport` with the `DESeqDat
 
 A *design* for the experiment also needs to be specified. This will define how the differential expression analysis is carried out, but can be changed at a later stage so we will use `CellType` for now as our factor of interest.
 
-```{r}
+```{r message=FALSE}
 library(DESeq2)
 dds <- DESeqDataSetFromTximport(txi, 
                                 colData = sampleinfo,
@@ -413,7 +401,7 @@ We typically use a `boxplot` to visualise difference the distributions of the co
 boxplot(assay(dds))
 ```
 
-```{r}
+```{r message=FALSE}
 boxplot(log10(assay(dds)))
 ```
 

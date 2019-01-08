@@ -25,10 +25,11 @@ Based on the course [RNAseq analysis in R](http://combine-australia.github.io/20
 ## Resources and data files
 
 This material has been created using the following resources:  
-http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
-http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
-http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
-https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
+
+- http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
+- http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
+- http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+- https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
 
 
 
@@ -92,7 +93,7 @@ design(dds) <- ~CellType
 
 
 
-The function runs a couple of processing steps automatically to adjust for different library size and gene-wise variabiliy, which you can read about in the [DESeq2 vignette)[http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#the-deseq2-model].
+The function runs a couple of processing steps automatically to adjust for different library size and gene-wise variabiliy, which you can read about in the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#the-deseq2-model).
 
 Firstly apply the median ratio normalisation method to compensate for differences in library sizes
 
@@ -140,7 +141,7 @@ However, `dpylr` does not like data frame that have rownames. We can use the `ro
 ```{r}
 library(dplyr)
 library(tibble)
-results.cellType <- as.data.frame(results(de)) %>% 
+results.cellType <- as.data.frame(results(de.cellType)) %>% 
   rownames_to_column("GeneID")  
 
 results.cellType
@@ -171,20 +172,21 @@ arrange(results.cellType, padj) %>%
 > 2. Write a csv file that contains results for the genes that have a p-value less than 0.05 and a log2 fold change more than 1, or less than -1.
 > HINT: So that we don't overwrite our results so far, it may be convenient to create a new `DESeqDataSet` object for the new differential expression analysis.
 
-```{r}
+```{r eval=FALSE}
 dds.status <- dds
-
+design(dds.status) <- ......
 ```
 
+### Changing the direction of the contrast
 
 In this initial analyis `DESeq2` has automatically decided which member of our sample groups to use as our baseline (`basal` in this case) so that the log2 fold changes are reported with a positve value meaning higher expression in `luminal`. If we want to change this behaviour we can change the `contrast` argument in the `results` function
 
 
-```{r}
+```{r eval=FALSE}
 ## This should give the same as the table above
-results(de, contrast=c("CellType","luminal","basal"))
+results(de.cellType, contrast=c("CellType","luminal","basal"))
 ## Changing the direction of the contrast
-results(de, contrast=c("CellType","basal","luminal"))
+results(de.cellType, contrast=c("CellType","basal","luminal"))
 
 ```
 
@@ -199,10 +201,12 @@ resultsNames(de.status)
 results.status <- data.frame(results(de.status))
 ```
 
+### Intersecting gene lists
+
 A venn diagram is a common way of visualising the overlap between two genelists. We need to create a data frame where each column indicates whether each gene is differentially expressed in a particular contrast or not. To create such columns we can do a logical test on the adjusted p-values from our results tables.
 
 
-```{r}
+```{r message=FALSE}
 venn_data <- data.frame(CellType = results.cellType$padj<0.05,
                         Status = results.status$padj < 0.05)
 library(limma)
@@ -243,7 +247,6 @@ countMatrix <-counts(dds, normalized=TRUE)
 head(countMatrix)
 write.csv(countMatrix,file="normalized_counts.csv")
 ```
-
 
 
 ```{r eval=FALSE}
