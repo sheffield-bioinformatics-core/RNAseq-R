@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM dorowu/ubuntu-desktop-lxde-vnc
 MAINTAINER Mark Dunning<m.j.dunning@sheffield.ac.uk>
 RUN rm -rf /var/lib/apt/lists/*
 RUN apt-get update 
@@ -109,4 +109,8 @@ WORKDIR /home/dcuser/
 #RUN mkdir hisat_ref
 #RUN hisat2-build ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa hisat_ref/GRCm38_chr19_hisat
 
+USER root
+ADD /sudoers.txt /etc/sudoers
+RUN chmod 440 /etc/sudoers
+#USER dcuser
 
