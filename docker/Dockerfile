@@ -73,7 +73,7 @@ RUN rm /tmp/*.tar.gz
 
 
 
-RUN useradd dcuser -m -d /home/dcuser
+RUN useradd dcuser -m -d /home/dcuser -G sudo -s /bin/bash
 RUN chown dcuser /home/dcuser
 
 USER dcuser
@@ -99,8 +99,6 @@ WORKDIR /home/dcuser/rnaseq_data
 RUN unzip downsampled_fastq.zip
 RUN rm downsampled_fastq.zip
 
-WORKDIR /home/dcuser/
-
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ensembl_ref/
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz -P ensembl_ref
 #RUN salmon index -i salmon_ref/GRCm38_chr1 -t ensembl_ref/Mus_musculus.GRCm38.cdna.all.fa.gz
@@ -110,7 +108,6 @@ WORKDIR /home/dcuser/
 #RUN hisat2-build ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa hisat_ref/GRCm38_chr19_hisat
 
 USER root
-ADD /sudoers.txt /etc/sudoers
-RUN chmod 440 /etc/sudoers
-#USER dcuser
 
+RUN echo "su - dcuser >> /etc/.basrc"
+RUN echo "cd /home/dcuser >> /etc/.bashrc"

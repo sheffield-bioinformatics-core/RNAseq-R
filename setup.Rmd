@@ -1,0 +1,78 @@
+---
+title: "Course Setup"
+author: "Mark Dunning"
+date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Course Setup for Day 1
+
+In this course we will demonstrate how to run some standard analysis tools for RNA-seq data. The majority of Bioinformatics tools are built with a *command-line* environment in mind, rather than Windows or Mac OSX. To simplify the installation of these tools, we are providing some resources on the *cloud* that you can log into for the duration of the course. 
+
+## 1. Create an account at InstanceHub
+
+*InstanceHub* is a tool created at The University of Sheffield for creating cloud resources for computing practicals. You will need to go to [instancehub.com](instancehub.com) and create an account. **Make sure that you specify the same email address that you signed-up to the course**.
+
+
+## 2. Launch the Lab 
+
+Choose the menu option *View my labs* on the left-hand menu. The lab **Introduction to RNA-seq - Day 1** should be visible. Click the *Participate* button.
+
+![](images/instance-hub1.png)
+
+## 3. Connect to the lab
+
+Press the *Start Lab* (green) button and wait until the *Start Lab* button and wait
+
+![](images/instance-hub2.png)
+
+Once *Start Lab* has been replaced by *Disconnect*, the *Connection Information* tab will be updated with an IP address etc.
+
+![](images/instance-hub3.png)
+
+Enter the following address in your web browser 
+
+Replacing **IP_ADDRESS** with the numbers next to **Instance IP** in the *Connection Information* box.
+
+```
+http://IP_ADDRESS:6080
+```
+
+e.g. 
+
+```
+http://3.8.149.23:6080
+```
+
+## 4. Open a termninal window
+
+You should be presented with a unix desktop environment that we can use to learn about the command-line and tools for processing RNA-seq data.
+
+To open a *Terminal* (in order to enter Unix commands), there is a "Start menu" in the bottom-left corner from which you can select *System Tools* and then *LXTerminal*
+
+![](images/terminal-launch.png)
+
+## 5. Change user
+
+Finally, in order to follow the materials we need to change the user that we logged in as from `root` to `dcuser`.
+
+Type the command into the terminal window exactly as it appears below
+
+```
+su - dcuser
+```
+
+![](images/change-user.png)
+
+# Course Setup for Day 2
+
+
+
+# Setup on your own machine
