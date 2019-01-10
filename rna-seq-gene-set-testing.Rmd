@@ -76,6 +76,7 @@ head(results.annotated)
 An appealing feature of the method is that it does not require us to impose arbitrary cut-offs on the dataset to decide what is differentially-expressed or not. The steps in producing the input required for GSEA are i) retrieving the ranked statistics ii) naming each one according to Entrez ID.
 
 ```{r}
+library(dplyr)
 gseaInput <- filter(results.annotated, !is.na(ENTREZID)) %>% 
   arrange(stat)
 ranks <- pull(gseaInput,stat)
@@ -89,18 +90,13 @@ names(ranks) <- gseaInput$ENTREZID
 barplot(ranks)
 ```
 
-The Walter+Eliza Hall Institutes Bioinformatics service have made mouse versions of the MSigDB datasets available for download. We can download the file in R with the `file.download` function.
+The Walter+Eliza Hall Institutes Bioinformatics service have made mouse versions of the MSigDB datasets available for download. This should already be available in the `Robjects` folder.
 
-```{r}
-download.file("http://bioinf.wehi.edu.au/software/MSigDB/mouse_H_v5p2.rdata",destfile = "Robjects/mouse_H_v5p2.rdata")
-
-```
 
 
 ```{r}
 load("Robjects/mouse_H_v5p2.rdata")
 pathways <- Mm.H
-pathways[[1]]
 ```
 
 Conduct analysis:
@@ -108,10 +104,11 @@ Conduct analysis:
 ```{r}
 library(fgsea)
 fgseaRes <- fgsea(pathways, ranks, minSize=15, maxSize = 500, nperm=1000)
-class(fgseaRes)
 dim(fgseaRes)
 #head(fgseaRes)
 ```
+
+The results table gives the names of each pathway that was tested and the stats from doing the test. We can make this into a "tidy" object with the following code.
 
 ```{r}
 fgseaResTidy <- fgseaRes %>%
@@ -135,17 +132,24 @@ ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
 
 The enrichment plot will show where the genes belonging to a particular gene set are towards the top or the bottom of the genelist, and how the *enrichment score* is calculated across the dataset.
 
+Here we show the enrichment plot for the pathway with the most positive enrichment score.
+
 ```{r}
 plotEnrichment(pathways[["HALLMARK_OXIDATIVE_PHOSPHORYLATION"]],
                ranks)
 ```
 
-```{r}
-plotEnrichment(pathways[["HALLMARK_MYC_TARGETS_V1"]],ranks)
-```
+> ## Challenge 1{.challenge}
+> 1. What pathway has the most extreme negative enrichment score? How can you identify this pathway from the results table?
+> 2. Make the enrichment plot for this pathway
+
+
+The names of genes involved in particular pathways can be extracted from the `pathways` object. We can then use these genes to make a heatmap, or other visualisation, to show how these genes partition the dataset.
 
 ```{r}
-my_genes <- filter(results.annotated, ENTREZID %in% pathways[["HALLMARK_MYC_TARGETS_V1"]]) %>% 
+library(DESeq2)
+library(pheatmap)
+my_genes <- filter(results.annotated, ENTREZID %in% pathways[["HALLMARK_MYC_TARGETS_V2"]]) %>% 
   pull(ENSEMBL)
 
 vsd <- vst(dds)
@@ -156,16 +160,7 @@ rownames(sampleinfo) <- sampleinfo$run
 
 pheatmap(mat,
          annotation_col = sampleinfo[,c("Status","CellType")])
-
 ```
-
-```{r}
-pheatmap(mat[,order(colData(dds)$Status)],
-         annotation_col = sampleinfo[,c("Status","CellType")],cluster_cols = FALSE)
-
-```
-
-
 
 ## Gene Set Testing - competitive gene set tests
 
@@ -183,7 +178,7 @@ From the [GOseq vignette](https://www.bioconductor.org/packages/release/bioc/vig
 
 "GO analysis of RNA-seq data requires the use of random sampling in order to generate a suitable null distribution for GO category membership and calculate each category's significance for over representation amongst DE genes. ... In  most  cases,  the  Wallenius distribution can be used to approximate the true null distribution, without any significant loss in accuracy. The goseq package implements this approximation as its default option."
 
-Create list of DEGs:
+First, create list of DEGs. We don't have to be too strict about our criteria for a gene to be differentially-expressed, as too few genes will not give us many enriched pathways.
 
 ```{r}
 genes <- results.annotated$padj < 0.05 & !is.na(results.annotated$padj)
@@ -204,10 +199,84 @@ Conduct gene set enrichment analysis:
 
 ```{r results="hide"}
 #?goseq
-go.results <- goseq(pwf, "mm10","ensGene")
-go.results
+goseq_res <- goseq(pwf, "mm10","ensGene",test.cats="GO:BP")
+goseq_res
 ```
 
+## Analysis with clusterProfiler
+
+`clusterProfiler` is another Bioconductor package for over-representation analysis. It's main advantage is that it provides some nice visualisation methods.
+
+Firstly, we can identify over-represented GO terms and visualise these as a network.
+
+```{r}
+library(clusterProfiler)
+universe <- results.annotated %>% pull(ENTREZID)
+sigGenes <- results.annotated %>% 
+  filter(padj < 0.05, !is.na(ENTREZID)) %>% pull(ENTREZID)
+
+enrich_go <- enrichGO(
+  gene= sigGenes,
+  OrgDb = org.Mm.eg.db,
+  keyType = "ENTREZID",
+  ont = "BP",
+  universe = universe,
+  qvalueCutoff = 0.05,
+  readable=TRUE
+)
+
+```
+
+```{r}
+enrich_go_tidy <- enrich_go %>% 
+  slot("result") %>% 
+  tibble::as.tibble() 
+enrich_go_tidy
+```
+
+A dot plot can show us the most enriched pathways, and the size of each.
+
+```{r}
+dotplot(enrich_go)
+```
+
+```{r}
+emapplot(enrich_go)
+```
+
+We also perform enrichment of KEGG pathways with the `clusterProfiler` package. We could do this with `goseq`, but again `clusterProfiler` has some nice visualisations and uses online resources rather than relying on Bioconductor annotation.
+
+To run the analysis we can use the same list of genes as before, and need to know the kegg code for our given organism.
+
+```{r}
+search_kegg_organism('mouse', by='common_name')
+keg_res <- enrichKEGG(gene=sigGenes, organism="mmu")
+```
+
+```{r}
+head(keg_res,n=10)
+```
+
+If we want to view the network for any pathway, we can use the `browseKEGG` function which will take us to the relevant page on the KEGG website.
+
+We will choose an example of a smaller pathway to make things a bit clearer.
+
+```{r}
+browseKEGG(keg_res, 'mmu03320')
+```
+
+The `pathview` package will produce a version of this plot (`png`) in your working directory.
+
+```{r}
+library(pathview)
+logFC <- results.annotated$log2FoldChange
+names(logFC) <- results.annotated$ENTREZID
+
+pathview(gene.data = logFC, 
+         pathway.id = "mmu03320", 
+         species = "mmu", 
+         limit = list(gene=5, cpd=1))
+```
 
 
 ## Creating Gene lists to use with an online tool
