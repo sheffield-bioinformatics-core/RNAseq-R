@@ -294,87 +294,15 @@ multiqc --help
 > Look at the help for the tool, and figure out how to run the tool on the fastqc output we have just generated
 
 
-## Viewing HTML files
-
-If we were working on our local computers, we'd be able to display each of these 
-HTML files as a webpage: 
- 
-```{bash eval=FALSE}
-open SRR1552444_fastqc.html
-```
- 
-
-However, if you try this on our AWS instance, you'll get an error: 
+The environment that we are working inside includes a version of the Firefox web browser. We can open a particular HTML file with firefox using the command:-
 
 ```
-bash: open: command not found
+firefox results/SRR1552444_fastqc.html 
 ```
-
-This is because the AWS instance we're using doesn't have any web
-browsers installed on it, so the remote computer doesn't know how to 
-open the file. We want to look at the webpage summary reports, so 
-let's transfer them to our local computers (i.e. your laptop).
-
-To transfer a file from a remote server to our own machines, we will
-use a variant of the `cp` command called `scp`. The `s` stands for
-"secure" - this is a secure version of copying. 
-
-For the `cp` command, the syntax was:
-
-```
-$ cp my_file new_location
-```
-
-The syntax for `scp` is the same, but now `my_file` and
-`new_location` are on separate computers, so we need to give an 
-absolute path, including the name of our remote computer. First we
-will make a new directory on our computer to store the HTML files
-we're transfering. Let's put it on our desktop for now. **Open a new
-tab in your terminal program** (you can use the pull down menu at the
-top of your screen or the Cmd+t keyboard shortcut) and type: 
-
-
-Now we can transfer our HTML files to our local computer using `scp`.
-
-```{bash eval=FALSE}
-scp dcuser@ec2-34-238-162-94.compute-1.amazonaws.com:~/*.html ~/Desktop
-```
-
-
-This looks really complicated, so let's break it down. The first part
-of the command `dcuser@ec2-34-238-162-94.compute-1.amazonaws.com` is
-the address for your remote computer. Make sure you replace everything
-after `dcuser@` with your instance number (the one you used to log in). 
-
-The second part starts with a `:` and then gives the absolute path
-of the files you want to transfer from your remote computer. Don't
-forget the `:`. We used a wildcard (`*.html`) to indicate that we want all of
-the HTML files. 
-
-The third part of the command gives the absolute path of the location
-you want to put the files. This is on your local computer and is the 
-Desktop `~/Desktop/fastqc_html`. 
-
-You should see a status output like this:
-
-~~~
-SRR1552444_fastqc.html                                                                                                            100%  261KB 261.0KB/s   00:00    
-SRR1552445_fastqc.html                                                                                                            100%  258KB 258.2KB/s   00:00    
-SRR1552446_fastqc.html                                                                                                            100%  260KB 260.4KB/s   00:00    
-SRR1552447_fastqc.html                                                                                                            100%  258KB 258.1KB/s   00:00   
-~~~
-
-
-Now we can go to the Destkop on our own laptop open the HTML files in a web browser (e.g. Firefox). 
-
-
-Your computer will open each of the HTML files in your default web
-browser. Depending on your settings, this might be as six separate
-tabs in a single window or six separate browser windows.
 
 > ## Exercise
 > 
-> Discuss your results with a neighbor. Which sample(s) looks the best
+> Discuss your results with a neighbour. Which sample(s) looks the best
 > in terms of per base sequence quality? Which sample(s) look the
 > worst?
 > 
@@ -383,9 +311,7 @@ tabs in a single window or six separate browser windows.
 ## Unzipping Compressed Files
 
 Now that we've looked at our HTML reports to get a feel for the data,
-let's look more closely at the other output files. Go back to the tab
-in your terminal program that is connected to your AWS instance
-(the tab lab will start with `dcuser@ip`) and make sure you're in
+let's look more closely at the other output files. Make sure you're in
 our results subdirectory.   
 
 

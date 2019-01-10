@@ -29,7 +29,7 @@ Choose the menu option *View my labs* on the left-hand menu. The lab **Introduct
 
 ## 3. Connect to the lab
 
-Press the *Start Lab* (green) button and wait until the *Start Lab* button and wait
+Press the *Start Lab* (green) button and wait whilst the lab loads...
 
 ![](images/instance-hub2.png)
 
@@ -50,6 +50,8 @@ e.g.
 ```
 http://3.8.149.23:6080
 ```
+
+**Do not click Disconnect**
 
 ## 4. Open a termninal window
 
@@ -73,6 +75,89 @@ su - dcuser
 
 # Course Setup for Day 2
 
+On the second day of the course we will be performing analysis in Rstudio. It would be preferable to run this locally on your own machine so everything is setup for you after the course.
 
+You will need to install the latest version of R **and** RStudio as per the instructions on the [course home page](http://sbc.shef.ac.uk/training/rna-seq-in-r-2019-01-14/#software-installation)
+
+The copy-and-paste the following R code into the R console:-
+
+```{r}
+install.packages("BiocManager")
+BiocManager::install(c("limma", 
+         "org.Mm.eg.db", 
+         "RColorBrewer", 
+         "TxDb.Mmusculus.UCSC.mm10.knownGene",
+         "goseq",
+         "fgsea",
+         "DESeq2",
+         "pheatmap",
+         "rmarkdown",
+         "tximport",
+         "clusterProfiler",
+         "DOSE",
+         "pathview",
+         "biomaRt"),update=FALSE)
+
+```
+
+![](images/install-pkgs.png)
+
+### Backup resource if local installation does not work
+
+If there are serious problems installing the course software, we also have cloud compute available. Follow steps 1 to 3 the same as for Day 1, except starting the *Introduction to RNA-seq - Day 2* lab. 
+
+![](images/day2-lab.png)
+
+Once the connection details have appeared, enter the *Connection IP* details in a web browser with `:8787` afterwards.
+
+
+e.g. 
+
+```
+3.8.181.100:8787
+```
+
+This should launch a pre-configured version of RStudio in your browser. The password is **rstudio** and the password is **sbc20190115**
+
+
+![](images/rstudio-browser.png)
 
 # Setup on your own machine
+
+You can launch the same computing environment on your own machine using a tool called *Docker*.
+
+Docker is an open platform for developers to build and ship applications, whether on laptops, servers in a data center, or the cloud.
+
+- Or, it is a (relatively) painless way for you to install and try out Bioinformatics software.
+- You can think of it as an isolated environment inside your exising operating system where you can install and run software without messing with the main OS
+    + Really useful for testing software
+    + Clear benefits for working reproducibly
+- Instead of just distributing the code used for a paper, you can effectively share the computer you did the analysis on
+- For those of you that have used Virtual Machines, it is a similar concept
+
+
+## Installing Docker
+
+
+### Mac
+
+- [Mac OSX - 10.10.3 or newer](https://www.docker.com/docker-mac)
+- [Older Macs](https://download.docker.com/mac/stable/DockerToolbox.pkg)
+
+### Windows
+
+- [Windows 10 Professional](https://www.docker.com/docker-windows)
+- [Other Windows](https://download.docker.com/win/stable/DockerToolbox.exe)
+
+Once you have installed Docker using the insructions above, you can open a terminal (Mac) or command prompt (Windows) and type the following to run the Day 1 environment
+
+```
+docker run --rm -p 6080:80 markdunning/rnaseq-toolbox
+```
+
+Entering the address in your web browser should display the environment
+
+```
+http://localhost:6080
+```
+
