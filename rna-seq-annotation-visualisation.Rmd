@@ -76,14 +76,14 @@ plotMA(results(de.mf,contrast=c("Status","lactation","virgin")))
 ***Note*** You may see an error message when trying to make the above MA plot. This could be because both `limma` and `DESeq2` have a function called `plotMA`, and R can sometimes pick the wrong function. To explictly use the `DESeq2` function you can use:-
 
 ```{r}
-DESeq2:::plotMA(results(de.mf,contrast=c("Status","lactation","virgin")))
+DESeq2::plotMA(results(de.mf,contrast=c("Status","lactation","virgin")))
 ```
 
 MA-plots often display a fanning-effect at the left-hand side (genes with low numbers of counts) due to the high variability of the measurements for these genes. For more informative visualization and more accurate ranking of genes by effect size (the log fold change may sometimes be referred to as an effect size), the `DESeq2` authors recommend "shrinking" the log fold-changes which is available in DESeq2’s `lfcShrink` function. This results in more stable fold change values. The p-values are unaffected.
 
 ```{r}
 res_LvsV <- lfcShrink(de.mf,contrast=c("Status","lactation","virgin"))
-plotMA(res_LvsV)
+DESeq2::plotMA(res_LvsV)
 ```
 
 We will re-define our results object to use these new fold-changes.
@@ -180,7 +180,7 @@ select(org.Mm.eg.db, keys="ENSMUSG00000000381",
 To annotate our results, we definitely want gene symbols and perhaps the full gene name. Let's build up our annotation information into a new data frame using the `select` function.
 
 ```{r}
-anno <- select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
               columns=c("SYMBOL","GENENAME"),
               keytype="ENSEMBL")
 # Have a look at the annotation
@@ -207,7 +207,7 @@ filter(anno, ENSEMBL %in% dup_ids) %>%
 Fortunately, there are not too many so hopefully we won't lose too much information if we discard the entries that are duplicated. The first occurence of the duplicated ID will still be included in the table.
 
 ```{r}
-anno <- select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
               columns=c("ENSEMBL","SYMBOL","GENENAME","ENTREZID"),
               keytype="ENSEMBL") %>% 
   filter(!duplicated(ENSEMBL))
@@ -274,13 +274,13 @@ pheatmap(assay(vsd)[top_genes,],
 
 > ## Challenge 1{.challenge}
 > 1. Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes
-> 2. Change the plot so that gene names are displayed rather than Entrez IDs
+> 2. Change the plot so that gene names are displayed rather than Ensembl IDs
 > 3. Save the plot to a pdf file
 > HINT: check the help for the `pheatmap` function to see how column and row labels can be changed
 
-### Accessing the sample or clusters
+### Accessing the sample or gene clusters
 
-The heatmap displays relationships between samples and genes in our study as a useful visualisation. In this example we can easily identify which samples are most similar based on their expression patterns. However, for larger dataset this may be more problematic. We can extract data the sample relationships about if we manually perform the clustering steps used by `pheatmap`. First is to cluster the samples with the default distance matrix and clustering algorithms.
+The heatmap displays relationships between samples and genes in our study as a useful visualisation. In this example we can easily identify which samples are most similar based on their expression patterns. However, for larger dataset this may be more problematic. We can extract data the sample relationships about if we manually perform the clustering steps used by `pheatmap`. First is to cluster the samples with the default distance matrix and clustering algorithms. 
 
 ```{r}
 mat <- assay(vsd)[top_genes,]
@@ -288,25 +288,32 @@ mat <- assay(vsd)[top_genes,]
 d_samples <- dist(t(mat))
 
 plot(hclust(d_samples))
-## Do clustering and split the samples into 2 groups
+rect.hclust(hclust(d_samples),k=2)
 ```
 
-We can then "cut" the dendrogram to give a set number of clusters. The groupings could then be associated with the sample metadata.
+We can then "cut" the dendrogram to give a set number of clusters. Each sample has been assigned a label of `1` or `2` depending on which cluster it belongs to.
 
 ```{r}
 clusters <- cutree(hclust(d_samples),k = 2)
 clusters
+
+```
+
+The groupings could then be tabulated against with the sample metadata to see if particular biological groups are associated with the new clusters we have identified.
+
+```{r}
 table(clusters, colData(dds)$Status)
 
 ```
 
 A similar approach would also work for the genes. The key difference that we don't transpose before calculating the distance matrix. For the small number of genes in the heatmap such a distance matrix can be computed, but it may be computationally-expensive for a large number of genes.
 
-```{r}
+```{r fig.height=6}
 d_genes <- dist(mat)
 
 plot(hclust(d_genes))
 ## Do clustering and split the samples into 2 groups
+rect.hclust(hclust(d_genes),k=2)
 cutree(hclust(d_genes),k = 2)
 
 ```
@@ -355,7 +362,7 @@ getBM(attributes = attributeNames,
       mart=ensembl)
 ```
 
-> ## Challenge 1{.challenge}
+> ## Challenge 2{.challenge}
 > 1. Use biomaRt to create an data frame containing the entrezgene, gene symbol and genomic coordinates (chromosome, start, end) for the Ensembl IDs in the DESeq2 results
 > 2. Remove duplicates entries from the new data frame
 > 3. Join the biomaRt annotation to the DESeq2 results to produce a data frame with differential expression results and annotation
@@ -365,6 +372,44 @@ getBM(attributes = attributeNames,
 
 ```
 
+### Interactive graphs and tables
+
+It is often useful to be able to explore our results in an interactive manner; searching for our favourite genes of interest and plotting on-the-fly whether they are statistically significant in our dataset or not.
+
+Such a visualisation is possible with the [Glimma](https://academic.oup.com/bioinformatics/article-lookup/doi/10.1093/bioinformatics/btx094) Bioconductor package. 
+
+It takes our `DESeq2` results object, annotation table and normalized counts, and produces a HTML page including a sortable results table, MA-plot and scatter plot. Particular genes can be searched among the table and their expression patterns can be displayed. Alternatively we can click on particular point in the plot and display their stats.
+
+
+
+```{r}
+
+results <- results(de.mf,contrast=c("Status","lactation","virgin"))
+
+## Repeat the annotation, as the previous annotation table was created using an ordered results table
+
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=rownames(results),
+              columns=c("SYMBOL","GENENAME"),
+              keytype="ENSEMBL") %>% 
+  filter(!duplicated(ENSEMBL))
+
+```
+
+```{r}
+## Make sure we have normalised counts before proceeding
+dds <- estimateSizeFactors(dds)
+```
+
+```{r}
+## Load the Glimma package and create the report
+library(Glimma)
+glMDPlot(results,
+         anno,
+         groups = colData(dds)$Status,
+         counts = counts(dds,normalized=TRUE),
+         transform = TRUE,
+         side.main = "ENSEMBL")
+```
 
 
 ### Brief Introduction to ggplot2
@@ -381,6 +426,7 @@ The `plotCounts` function that we saw earlier can be adjusted to return the data
 
 
 ```{r}
+library(ggplot2)
 plot_data <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("CellType","Status"),returnData = TRUE)
 plot_data
 
@@ -430,180 +476,3 @@ ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point(aes(color=pad
 
 ```
 
-
-
-## (Supplemental) Retrieving Genomic Locations
-
-
-It might seem natural to add genomic locations to our annotation table, and possibly a bit odd that the `org.Mm.eg.db` package does not supply such mappings. In fact, there is a whole suite of package for performing this, and more-advanced queries that relate to the location of genes. These are listed on the Bioconductor [annotation page](http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData) and have the prefix `TxDb.`
-
-The package we will be using is `TxDb.Mmusculus.UCSC.mm10.knownGene`. Packages are available for other organisms and genome builds. It is even possible to *build your own database* if one does not exist. See `vignette("GenomicFeatures")` for details
-
-```{r eval=FALSE}
-source("http://www.bioconductor.org/biocLite.R")
-biocLite("TxDb.Mmusculus.UCSC.mm10.knownGene")
-
-## For Humans
-biocLite("TxDb.Hsapiens.UCSC.hg19.knownGene")
-
-```
-
-We load the library in the usual fashion and create a new object to save some typing. As with the `org.` packages, we can query what columns are available with `columns`,
-
-```{r message=FALSE}
-library(TxDb.Mmusculus.UCSC.mm10.knownGene)
-tx <- TxDb.Mmusculus.UCSC.mm10.knownGene
-columns(tx)
-```
-
-The `select` function is used in the same manner as the `org.Mm.eg.db` packages. 
-
-
-> ## Challenge 2{.challenge}
->
-> Use the TxDb.Mmusculus.UCSC.mm10.knownGene package to retrieve the exon coordinates for the genes `50916`, `110308`, `12293` 
->
-
-```{r echo=FALSE,warning=FALSE,message=FALSE}
-
-
-```
-
-### Overview of GenomicRanges
-
-One of the real strengths of the `txdb..` packages is the ability of interface with `GenomicRanges`, which is the object type used throughout Bioconductor [to manipulate Genomic Intervals](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3738458/pdf/pcbi.1003118.pdf). 
-
-These object types permit us to perform common operations on intervals such as overlapping and counting. We can define the chromosome, start and end position of each region (also strand too, but not shown here).
-
-```{r}
-library(GenomicRanges)
-simple.range <-GRanges("1", IRanges(start=1000,end=2000))
-simple.range
-
-```
-
-We don't have to have all our ranges located on the same chromosome
-```{r}
-chrs <- c("chr13", "chr15","chr5")
-start <- c(73000000, 101000000, 15000000)
-end <- c(74000000,102000000, 16000000)
-
-my.ranges <- GRanges(rep(chrs,3), 
-                     IRanges(start=rep(start,each=3),
-                             end = rep(end,each=3))
-)
-
-```
-
-There are a number of useful functions for calculating properties of the data (such as *coverage* or sorting). Not so much for RNA-seq analysis, but `GenomicRanges` are used throughout Bioconductor for the analysis of NGS data. 
-
-For instance, we can quickly identify overlapping regions between two `GenomicRanges`. However, we have to pay attention to the naming convention used for each object. `seqlevelsStyle` can 
-
-```{r}
-keys <- c("50916","110308","12293")
-genePos <- select(tx, keys=keys,
-       keytype = "GENEID",
-       columns=c("EXONCHROM","EXONSTART","EXONEND")
-      )
-geneRanges <- GRanges(genePos$EXONCHROM, IRanges(genePos$EXONSTART,genePos$EXONEND), GENEID=genePos$GENEID)
-geneRanges
-
-findOverlaps(my.ranges,geneRanges)
-seqlevelsStyle(geneRanges)
-seqlevelsStyle(simple.range)
-
-```
-
-
-## Retrieving Gene Coordinates as GenomicRanges
-
-As we saw above, it is quite straightforward to translate the output of a `select` query into a `GenomicFeatures` object. However, several convenience functions exist to retrieve the structure of every gene for a given organism in one object. 
-
-The output of `exonsBy` is a list, where each item in the list is the exon co-ordinates of a particular gene. 
-
-```{r}
-exo <- exonsBy(tx,"gene")
-exo
-```
-
-To access the structure of a particular gene, we can use the `[[` syntax with the name of the gene (Entrez gene ID) within quote marks. If we wanted to whole region that the gene spans we could use the `range` function.
-
-```{r}
-exo[["110308"]]
-range(exo[["110308"]])
-```
-
-
-## Exporting tracks
-
-It is also possible to save the results of a Bioconductor analysis in a browser to enable interactive analysis and integration with other data types, or sharing with collaborators. For instance, we might want a browser track to indicate where our differentially-expressed genes are located. We shall use the `bed` format to display these locations. We will annotate the ranges with information from our analysis such as the fold-change and significance.
-
-First we create a data frame for just the DE genes.
-```{r}
-sigGenes <- results.annotated[which(results.annotated$padj < 0.05),]
-sigGenes
-```
-
-At the moment, we have a GenomicFeatures object that represents every exon. However, we do not
-need this level of granularity for the bed output, so we will collapse to a single region for each gene. First we the `range` function to obtain a single range for every gene and tranform to a more convenient object with `unlist`.
-```{r}
-exoRanges <- unlist(range(exo))
-sigRegions <- exoRanges[na.omit(match(sigGenes$ENTREZID, names(exoRanges)))]
-sigRegions
-```
-
-Rather than just representing the genomic locations, the .bed format is also able to colour each range
-according to some property of the analysis (e.g. direction and magnitude of change) to help highlight
-particular regions of interest. A score can also be displayed when a particular region is clicked-on.
-A useful propery of GenomicRanges is that we can attach *metadata* to each range using the `mcols`
-function. The metadata can be supplied in the form of a data frame.
-
-```{r}
-mcols(sigRegions) <- sigGenes[match(names(sigRegions), rownames(sigGenes)),]
-sigRegions
-```
-
-The metadata we have added can also by used as a means to interrogate the ranges; as if the data were contained in a data frame.
-
-```{r}
-sigRegions[order(sigRegions$log2FoldChange,decreasing = TRUE)]
-```
-
-For visualisation purposes, we are going to restrict the data to genes that are located on chromosomes 1 to 19 and the sex chromosomes. This can be done with the `keepSeqLevels` function.
-
-```{r}
-seqlevels(sigRegions)
-sigRegions <- keepSeqlevels(sigRegions, paste0("chr", c(1:19,"X","Y")),pruning.mode = "coarse")
-```
-
-We will now create a score from the p-values that will displayed under each region, and colour scheme
-for the regions based on the fold-change. For the score we can use the $-log_{10}$ of the adjusted p-value as before
-
-
-
-```{r}
-Score <- -log10(sigRegions$padj)
-```
-
-`colorRampPalette` is a useful function in base R for constructing a palette between two extremes. **When choosing colour palettes, make sure they are colour blind friendly**. The red / green colour scheme traditionally-applied to microarrays is a ***bad*** choice.
-
-We will also truncate the fold-changes to between -5 and 5 to and divide this range into 10 equal bins
-
-```{r}
-rbPal <-colorRampPalette(c("red", "blue"))
-logfc <- pmax(sigRegions$log2FoldChange, -5)
-logfc <- pmin(logfc , 5)
-
-Col <- rbPal(10)[as.numeric(cut(logfc, breaks = 10))]
-```
-
-The colours and score have to be saved in the GRanges object as `score` and `itemRgb` columns respectively, and will be used to construct the browser track. The rtracklayer package can be used to import and export browsers tracks.
-
-Now we can export the signifcant results from the DE analysis as a `.bed` track using `rtracklayer`. You can load the resulting file in IGV, if you wish.
-```{r}
-mcols(sigRegions)$score <- Score
-mcols(sigRegions)$itemRgb <- Col
-sigRegions
-library(rtracklayer)
-export(sigRegions , con = "topHits.bed")
-```
