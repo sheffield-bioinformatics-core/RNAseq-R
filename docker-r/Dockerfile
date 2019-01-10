@@ -9,13 +9,11 @@ RUN R -e 'BiocManager::install("goseq")'
 RUN R -e 'BiocManager::install("pheatmap")'
 RUN R -e 'BiocManager::install("rmarkdown")'
 RUN R -e 'BiocManager::install("tximport")'
-RUN R -e 'BiocManager::install("clusterProfiler")'
 
 RUN apt-get -y install libudunits2-dev libpng-dev
 RUN R -e 'BiocManager::install("clusterProfiler")'
 RUN R -e 'BiocManager::install("DOSE")'
 RUN R -e 'BiocManager::install("pathview")'
-RUN R -e 'BiocManager::install("clusterProfiler")'
 RUN apt-get install --fix-missing -y git
 ###Get repository of the course. Install data and R packages
 RUN git clone https://github.com/sheffield-bioinformatics-core/RNAseq-R.git /home/rstudio/workshop
