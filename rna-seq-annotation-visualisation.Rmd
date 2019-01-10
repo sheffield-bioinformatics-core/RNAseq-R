@@ -278,9 +278,9 @@ pheatmap(assay(vsd)[top_genes,],
 > 3. Save the plot to a pdf file
 > HINT: check the help for the `pheatmap` function to see how column and row labels can be changed
 
-### Accessing the sample or clusters
+### Accessing the sample or gene clusters
 
-The heatmap displays relationships between samples and genes in our study as a useful visualisation. In this example we can easily identify which samples are most similar based on their expression patterns. However, for larger dataset this may be more problematic. We can extract data the sample relationships about if we manually perform the clustering steps used by `pheatmap`. First is to cluster the samples with the default distance matrix and clustering algorithms.
+The heatmap displays relationships between samples and genes in our study as a useful visualisation. In this example we can easily identify which samples are most similar based on their expression patterns. However, for larger dataset this may be more problematic. We can extract data the sample relationships about if we manually perform the clustering steps used by `pheatmap`. First is to cluster the samples with the default distance matrix and clustering algorithms. 
 
 ```{r}
 mat <- assay(vsd)[top_genes,]
@@ -288,25 +288,32 @@ mat <- assay(vsd)[top_genes,]
 d_samples <- dist(t(mat))
 
 plot(hclust(d_samples))
-## Do clustering and split the samples into 2 groups
+rect.hclust(hclust(d_samples),k=2)
 ```
 
-We can then "cut" the dendrogram to give a set number of clusters. The groupings could then be associated with the sample metadata.
+We can then "cut" the dendrogram to give a set number of clusters. Each sample has been assigned a label of `1` or `2` depending on which cluster it belongs to.
 
 ```{r}
 clusters <- cutree(hclust(d_samples),k = 2)
 clusters
+
+```
+
+The groupings could then be tabulated against with the sample metadata to see if particular biological groups are associated with the new clusters we have identified.
+
+```{r}
 table(clusters, colData(dds)$Status)
 
 ```
 
 A similar approach would also work for the genes. The key difference that we don't transpose before calculating the distance matrix. For the small number of genes in the heatmap such a distance matrix can be computed, but it may be computationally-expensive for a large number of genes.
 
-```{r}
+```{r fig.height=6}
 d_genes <- dist(mat)
 
 plot(hclust(d_genes))
 ## Do clustering and split the samples into 2 groups
+rect.hclust(hclust(d_genes),k=2)
 cutree(hclust(d_genes),k = 2)
 
 ```
