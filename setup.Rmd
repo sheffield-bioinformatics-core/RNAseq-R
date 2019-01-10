@@ -161,3 +161,20 @@ Entering the address in your web browser should display the environment
 http://localhost:6080
 ```
 
+### Using the environment to analyse your own data
+
+With the default settings, the computing environment is isolated from your own laptop; we can neither bring files that we create back to our own OS, or analyse our own data.
+
+However, adding an `-v` argument allows certain folders on your own OS to be visible within the enviroment. 
+
+Assuming the files I want to analyse are to be found in the folder `PATH_TO_FASTQ`, the following command would map that directory to the folder `/home/dcuser/rnaseq_data`
+
+```
+docker run --rm -p 6080:80 -v /PATH_TO_FASTQ/:/home/dcuser/rnaseq_data markdunning/rnaseq-toolbox
+```
+
+At the terminal, we should be able to see our files with the `ls` command
+
+```
+ls /home/dcuser/rnaseq_data
+```
