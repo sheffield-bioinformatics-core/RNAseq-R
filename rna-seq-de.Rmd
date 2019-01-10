@@ -138,6 +138,8 @@ The output can be converted into a data frame and manipulated in the usual manne
 
 However, `dpylr` does not like data frame that have rownames. We can use the `rownames_to_column` function from the `tibble` package to add an extra column that contains the Ensembl gene IDs.
 
+The `%>%` symbol refers to the piping operation in R, which is a way of chaining operations together. 
+
 ```{r}
 library(dplyr)
 library(tibble)
@@ -147,11 +149,14 @@ results.cellType <- as.data.frame(results(de.cellType)) %>%
 results.cellType
 ```
 
+We can sort the rows by adjusted p-value and then print the first 10 rows.
 
 ```{r}
 arrange(results.cellType, padj) %>%  
   head(n=10)
 ```
+
+Or we can sort the rows and then write the resulting data frame to a file.
 
 ```{r}
 arrange(results.cellType, padj) %>%

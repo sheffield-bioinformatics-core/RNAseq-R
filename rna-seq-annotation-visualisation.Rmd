@@ -432,7 +432,7 @@ ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point(aes(color=pad
 
 
 
-## Retrieving Genomic Locations
+## (Supplemental) Retrieving Genomic Locations
 
 
 It might seem natural to add genomic locations to our annotation table, and possibly a bit odd that the `org.Mm.eg.db` package does not supply such mappings. In fact, there is a whole suite of package for performing this, and more-advanced queries that relate to the location of genes. These are listed on the Bioconductor [annotation page](http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData) and have the prefix `TxDb.`
