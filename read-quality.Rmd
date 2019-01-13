@@ -265,10 +265,14 @@ displaying the summary report for each of our samples.
 
 We want to keep our data files and our results files separate, so we
 will move these
-output files into a new directory within our `results/` directory.
+output files into a new directory within our `results/` directory. If this directory does not exist, we will have to create it.
+
+
 
 
 ```{bash eval=FALSE}
+## -p flag stops a message from appearing if the directory already exists
+mkdir -p results
 mv *.html results/
 mv *.zip results/
 ```
@@ -289,7 +293,7 @@ multiqc --help
 > ## Exercise
 > 
 > Use the multiqc tool to create a single QC report for the dataset.
-> Look at the help for the tool, and figure out how to run the tool on the fastqc output we have just generated
+> Look at the help for the tool, and figure out how to run the tool on the fastqc output we have just generated. Make sure that `multiqc` creates saves the report file in the `results` folder.
 
 
 The environment that we are working inside includes a version of the Firefox web browser. We can open a particular HTML file with firefox using the command:-
