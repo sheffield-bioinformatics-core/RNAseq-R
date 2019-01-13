@@ -188,17 +188,15 @@ cd ~/rnaseq_data/
 
 > ## Exercise
 > 
-> How many FASTQ files are in this dataset? How big are the files?
+> How many FASTQ files are in this dataset? How big are the files? 
 > (Hint: Look at the options for the `ls` command to see how to show
 > file sizes.)
 >
 
+As the `fastq` files are compressed, we can't use the `cat`, `head` or `tail` commands to view the contents (try it and see what happens!). Instead we can use the command `zcat` to print the contents of the screen to the file.
 
-As the `fastq` files are compressed, we can't use the `cat`, `head` or `tail` commands to view the contents (try it and see what happens!). 
-
-```{bash eval=FALSE}
-zcat SRR1552444.fastq.gz | head -n4
-```
+> ## Exercise
+> The command `zcat` can be used instead of `cat` to print the contents of a fastq file to the screen. Can you write a series of commands with a pipe `|` to print the first 4 lines of file `SRR1552444.fastq.gz` to the screen?
 
 
 To run the FastQC program, we would normally have to tell our computer where the program is located. In this particular case, FastQC has been installed in a location that can be accessed from all directories. 
