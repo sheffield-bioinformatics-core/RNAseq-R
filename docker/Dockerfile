@@ -108,6 +108,11 @@ RUN rm downsampled_fastq.zip
 #RUN hisat2-build ensembl_ref/Mus_musculus.GRCm38.dna.chromosome.19.fa hisat_ref/GRCm38_chr19_hisat
 
 USER root
-
+RUN apt-get install -y man nano
 RUN echo "su - dcuser >> /etc/.basrc"
 RUN echo "cd /home/dcuser >> /etc/.bashrc"
+RUN rm /etc/dpkg/dpkg.cfg.d/excludes
+# Reinstall all currently installed packages in order to get the man pages back
+RUN apt-get update && \
+    dpkg -l | grep ^ii | cut -d' ' -f3 | xargs apt-get install -y --reinstall && \
+    rm -r /var/lib/apt/lists/*
