@@ -83,12 +83,11 @@ hisat2-build ref_data/Mus_musculus.GRCm38.dna.chromosome.1.fa index/GRCm38_chr1_
 ```
 
 
+The index files of Mouse genome GRCm38 chromosome 1  should now be in the directory `index/`. All of them have a file name starting with the `GRCm38_chr1_hisat` prefix.
+
 ### Alignment with hisat2
 
-There are numerous tools performing short read alignment and the choice of the aligner
-typically depends by the analysis goals and requirements. We will use HISAT2. The index files of
-Mouse genome GRCm38 chromosome 1  are in the directory `index/`. All of them have a file name starting with the `GRCm38_chr1_hisat` prefix.
-There are several parameters we might want to specify in order to align our reads with HISAT2. To view them all type
+There are several parameters we might want to specify in order to align our reads with HISAT2. To view them all type. 
 
 
 ```{bash eval=FALSE}
@@ -190,13 +189,20 @@ See also
 
 - http://www.htslib.org/
 
-The steps in producing a bam file for analysis are given below. 
+The steps in producing a bam file for analysis are given below. The final step is important as it creates an *index file*. This index needs to be present in order for analysis tools to access the reads in the file in an efficient manner.
 
 
 ```{bash eval=FALSE}
 samtools view -bS aligned_reads/SRR1552444.sam > aligned_reads/SRR1552444.bam
-samtools sort aligned_reads/SRR1552444.bam aligned_reads/SRR1552444.sorted
+samtools sort aligned_reads/SRR1552444.bam -o aligned_reads/SRR1552444.sorted.bam
 samtools index aligned_reads/SRR1552444.sorted.bam
+```
+
+The `samtools` suite also includes a couple of tools that are useful for QC purposes.
+
+```{bash eval=FALSE}
+samtools flagstat aligned_reads/SRR1552444.sorted.bam
+samtools idxstats aligned_reads/SRR1552444.sorted.bam
 ```
 
 
@@ -204,10 +210,28 @@ samtools index aligned_reads/SRR1552444.sorted.bam
 
 We will use the `featureCounts` tool to obtain transcript-level counts for the aligned reads that we have just created. This requires that `gtf` files that we downloaded from Ensembl earlier and our newly-created bam file.
 
+
 ```{bash eval=FALSE}
 mkdir featureCounts
 featureCounts -a ref_data/Mus_musculus.GRCm38.91.chr.gtf.gz -o featureCounts/SRR1552444.counts aligned_reads/SRR1552444.sorted.bam
 
+```
+
+The command is able to accept multiple bam files
+
+### Running alignment for all `fastq` files
+
+If we wanted to process all the fastq files in our dataset, the following workflow could be employed. This creates a variable `i` that takes all values from 44 to 55 and processes the appropriate fastq file in turn. The `echo` command is used here to print the particular sample that is being processed.
+
+```{bash eval=FALSE}
+for i in {44..55}
+do
+echo Processing sample SRR15524${i}
+hisat2 -x index/GRCm38_chr1_hisat -U SRR15524${i}.fastq.gz -S aligned_reads/SRR15524${i}.sam 
+samtools view -bS aligned_reads/SRR15524${i}.sam > aligned_reads/SRR15524${i}.bam
+samtools sort aligned_reads/SRR15524${i}.bam -o aligned_reads/SRR15524${i}.sorted.bam
+samtools index aligned_reads/SRR15524${i}.sorted.bam
+done
 ```
 
 
@@ -221,13 +245,13 @@ a given annotation, so it is not able to identify non annotated genes and transc
 The documentation of the tool is available at
 https://salmon.readthedocs.io/en/latest/salmon.html
 
-Salmon is able to quantify transcript expression by using a quasi-mappings algorithm. Quasi-mappings are
+Salmon is able to quantify transcript expression by using a quasi-mapping algorithm. Quasi-mappings are
 mappings of reads to transcript positions that are computed without performing a base-to-base alignment
 of the read to the transcript. This approach is typically much faster to compute than traditional (or full)
 alignments, and can sometimes provide superior accuracy by being more robust to errors in the read or
 genomic variation from the reference sequence
 
-`salmon` also requires the user to create an index from the reference data. This time it requires a `fasta` file of the transcripts (rather than whole-genome fasta). It does not however need the file to be uncompressed. Again, we have to specify a *prefix* name for all the files that `salmon` is going to create. We will be using the whole set of transcripts for the mouse GRCm38 genome build.
+Like `Hisat` that we saw before, `salmon` also requires the user to create an index from the reference data. This time it requires a `fasta` file of the transcripts (rather than whole-genome fasta). It does not however need the file to be uncompressed. Again, we have to specify a *prefix* name for all the files that `salmon` is going to create. We will be using the whole set of transcripts for the mouse GRCm38 genome build.
 
 ```{bash eval=FALSE}
 salmon index -i index/GRCm38_salmon -t ref_data/Mus_musculus.GRCm38.cdna.all.fa.gz
@@ -249,14 +273,14 @@ salmon quant -i index/GRCm38_salmon --libType A -r SRR1552444.fastq.gz -o quant/
 > ## Exercise
 > 
 > Navigate to the quant folder and explore the files that salmon has created.
-> What file contains the quantifications? What are the various columns?
+> What file contains the quantifications? What are the various columns? Which transcript has the most reads?
 > Use the salmon documentation to understand the various output files https://salmon.readthedocs.io/en/latest/file_formats.html#fileformats
 
 ### Running for all samples
 
 If we want to repeat the quantification step for all our samples, we could employ a `for` loop as we have seen previously. 
 
-```{bash}
+```{bash eval=FALSE}
 
 for i in {44..55}
 do
