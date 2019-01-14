@@ -107,8 +107,8 @@ The script we used to run salmon (`run_salmon.sh`) created a separate folder for
 The function we are going to use to import the salmon files requires a `vector` comprising the paths to the files that are to be imported. To construct such a vector we can use the following code chunk. Furthermore, we can name each item in the vector according to the directory name. These names will be used eventually to name the columns of our count matrices.
 
 ```{r}
-dirs <- list.files(file.path("salmon_quant/"))
-quant_files <- paste0("salmon_quant/",dirs,"/quant.sf.gz")
+dirs <- list.files("salmon_quant/")
+quant_files <- list.files("salmon_quant/",pattern="quant.sf.gz",recursive = TRUE,full.names = TRUE)
 names(quant_files) <- dirs
 quant_files
 ```
