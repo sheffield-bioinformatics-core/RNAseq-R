@@ -152,6 +152,7 @@ tpm <- rpk / scale_factor
 In order for `tximport` to give *gene-level* counts, we need to supply a data frame that can be used to associate each transcript name with a gene identifier. **It is important to use a transcript file that corresponds to the name genome build as the file used to count the transcripts**. 
 
 We can check if the `gtf` file exists in the directory we expect by running the `file.exists` function; returning `TRUE` or `FALSE`
+
 ```{r}
 gtf_file <- "Mus_musculus.GRCm38.91.chr.gtf.gz"
 file.exists(gtf_file)
