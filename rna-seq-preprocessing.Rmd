@@ -461,9 +461,8 @@ plotPCA(vsd,intgroup="CellType")
 
 > ## Challenge 2 {.challenge}
 >
-> 1. Is the plot based on all genes in the dataset? How can we change how many genes are used for the PCA analysis?
-> 2. Change the `intgroup` parameter so that both CellType and Status are used for grouping.
-> HINT: check the documentation for the `plotPCA` function.
+> 1. Is the `plotPCA` plot based on all genes in the dataset? How can we change how many genes are used for the PCA analysis? Does this significantly change the plot? (HINT: check the documentation for the `plotPCA` function.)
+> 2. Change the `intgroup` parameter so that both CellType and Status are used for grouping. (See the documentation again)
 > 3. Is there something strange going on with the samples?
 > 4. Identify the two samples that don't appear to be in the right place.
 > 5. What other problems can you see with the metadata?
