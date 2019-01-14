@@ -359,6 +359,8 @@ colSums(assay(dds))
 > 2. Change the names under the plot so they are the "Name" of the sample rather than Run Name
 > 3. Add a horizontal line at 20 million reads
 
+> HINT: look at the help for the base graphics functions `barplot` and `abline` (or try and use `ggplot2` if you prefer)
+
 ![](images/lib_size.png)
 
 ### Filtering non-expressed genes
