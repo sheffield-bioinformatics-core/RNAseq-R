@@ -99,7 +99,11 @@ WORKDIR /home/dcuser/rnaseq_data
 RUN unzip downsampled_fastq.zip
 RUN rm downsampled_fastq.zip
 
-#RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ensembl_ref/
+# We might consider having a pre-computed index if participants don't have enough RAM to generate one
+#RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz -P ref_data/
+#RUN salmon index -i .pre_computed_index/GRCm38_salmon -t ref_data/Mus_musculus.GRCm38.cdna.all.fa.gz
+
+
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/gtf/mus_musculus/Mus_musculus.GRCm38.91.chr.gtf.gz -P ensembl_ref
 #RUN salmon index -i salmon_ref/GRCm38_chr1 -t ensembl_ref/Mus_musculus.GRCm38.cdna.all.fa.gz
 #RUN wget ftp://ftp.ensembl.org/pub/release-91/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.chromosome.19.fa.gz -P ensembl_ref/
@@ -109,10 +113,13 @@ RUN rm downsampled_fastq.zip
 
 USER root
 RUN apt-get install -y man nano
+## Attempt to make sure we enter the environment signed-in as 'dcuser'
 RUN echo "su - dcuser >> /etc/.basrc"
 RUN echo "cd /home/dcuser >> /etc/.bashrc"
-RUN rm /etc/dpkg/dpkg.cfg.d/excludes
+#RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 # Reinstall all currently installed packages in order to get the man pages back
-RUN apt-get update && \
-    dpkg -l | grep ^ii | cut -d' ' -f3 | xargs apt-get install -y --reinstall && \
-    rm -r /var/lib/apt/lists/*
+## actually, don't do this because we run out of space on the amazon machine
+
+#RUN apt-get update && \
+#    dpkg -l | grep ^ii | cut -d' ' -f3 | xargs apt-get install -y --reinstall && \
+#    rm -r /var/lib/apt/lists/*
