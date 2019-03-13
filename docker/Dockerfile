@@ -77,11 +77,11 @@ RUN useradd dcuser -m -d /home/dcuser -G sudo -s /bin/bash
 RUN chown dcuser /home/dcuser
 
 USER dcuser
-RUN mkdir -p /home/dcuser/dc_sample_data
+RUN mkdir -p /home/dcuser/shell_data
 RUN mkdir -p /home/dcuser/rnaseq_data
 
-COPY dc_sample_data.zip /home/dcuser/dc_sample_data
-WORKDIR /home/dcuser/dc_sample_data
+COPY dc_sample_data.zip /home/dcuser/shell_data
+WORKDIR /home/dcuser/shell_data
 RUN unzip dc_sample_data.zip
 RUN rm dc_sample_data.zip
 
