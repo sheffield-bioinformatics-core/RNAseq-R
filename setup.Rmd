@@ -161,6 +161,21 @@ Entering the address in your web browser should display the environment
 http://localhost:6080
 ```
 
+### Day 2 
+
+We also have a docker container for Day 2. Install docker using the instructions above, and run the following command in a terminal or command prompt.
+
+```
+docker run --rm -e PASSWORD=password -p 8787:8787 markdunning/rnaseq-r
+```
+
+Entering the following address in a web browser should open an RStudio instance. The username is `rstudio` and the password is `password`. 
+
+```
+http://localhost:8787
+```
+The RStudio version should have all the packages pre-installed and a blank markdown file `analysis.Rmd` that you can start working through the materials with.
+
 ### Using the environment to analyse your own data
 
 With the default settings, the computing environment is isolated from your own laptop; we can neither bring files that we create back to our own OS, or analyse our own data.
@@ -178,3 +193,5 @@ At the terminal, we should be able to see our files with the `ls` command
 ```
 ls /home/dcuser/rnaseq_data
 ```
+
+
