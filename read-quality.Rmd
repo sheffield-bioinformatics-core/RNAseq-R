@@ -40,36 +40,80 @@ built under the assumption that the data will be provided in a specific format.
 
 # Obtaining raw reads
 
-## Use `wget` to download from a remote location
+Before we can begin the analysis, we need to make our raw sequencing data accessible within the same computing environment that we are going to use for analysis. Assuming that you will be using a computing node without a GUI, this can be a non-trivial task. For example, we cannot easily drag-and-drop the files from one location to another or click a download link. Therefore we will introduce some commands for transfering files, compressing and de-compressing and checking file integrity.
 
-### Single file
+Lets create a temporary directory to test these tools:-
 
 ```{bash eval=FALSE}
-wget sbc.shef.ac.uk/example_reads.fastq
+mkdir tmp
+cd tmp
 ```
+
+
+## Use `wget` to download from a remote location
+
+If your data are hosted on a website or FTP site, you can use the `wget` command to download to the current working directory. A small `fastq` file is provided on the Sheffield Bioinformatics Core website as an example. The output updates you on the progress of the download.
+
+Note that if downloading from an FTP site you might be prompted for a username and password.
+
+```{bash eval=FALSE}
+wget http://sbc.shef.ac.uk/example_reads.fastq
+ls -lh
+```
+
+The contents of the file can be printed to the screen using the `head` command you should have learnt about previously
+
+```{bash eval=FALSE}
+head -n 4 example_reads.fastq
+```
+
+Since this file is so small, we needn't worry about the file size. However, in a real life experiment our raw sequencing reads can be many 10s of Gb in size. It is common practice to compress the file so that it takes less space on disk. The standard way of achieving this in Unix systems is to use the `gzip` command. A side-effect of the compression is that the resulting file can no longer be printed with `cat`. However, a `zcat` command can be used to the same effect.
 
 ```{bash eval=FALSE}
 ##example of compressing the file
 gzip example_reads.fastq
+## list the directory to see what changed...
+ls -lh
 ## Now have to use zcat to print...
-zcat example_reads.fastq
+zcat example_reads.fastq | head -n4
 ```
 
 
-### Archived directory
+## Download an archived directory
+
+Another popular technique for compressing and transfering a collection of files is to organise them into a single file (or *tarball*), which can then be compressed. Such a file is also available on the Sheffield Bioinformatics Core website for demonstration purposes. The `wget` command can be used as before.
 
 ```{bash eval=FALSE}
-wget sbc.shef.ac.uk/read_archive.tar.gz
-## example of how to extract into folders
-## challenge of compressed one of the files?
+wget http://sbc.shef.ac.uk/data/archive.tar.gz
+ls
 ```
 
+The `tar` command with the options `zxvf` (look these up if you want to understand more) can be used to create a directory structure containing all the files.
+
+```{bash eval=FALSE}
+tar zxvf read_archive.tar.gz
+ls
+```
+
+
+
+
 ### Checking the download worked
+
+Having downloaded all your files, you should probably check they have not been corrupted in transit. A common way of doing this is to generate an *md5sum* from the file.
 
 ```{bash eval=FALSE}
 ### show md5sum command and checking
 md5sum fastq/Sample1/Sample1.fastq
 ```
+
+> ## Challenge 1 {.challenge}
+>
+> 1. Download the pre-computed md5sums available at `http://sbc.shef.ac.uk/data/archive_md5.txt`. 
+> 2. Print the contents of this file and verify that the sum for Sample1.fastq is correct
+> 3. The md5sum command is able to check the md5sums for a collection of files against some pre-computed values. Use documentation (and google!) to discover how to do this for the files we have downloaded.
+
+
 
 ### Using sharc (UoS)
 
@@ -77,109 +121,7 @@ Can put files on shared drive, and it will be accessible
 
 ### Getting files from SRA?
 
-
-# Quality Control
-
-The first step in the variant calling workflow is to take the FASTQ files received from the sequencing facility
-and assess the quality of the sequence reads. 
-
-## Details on the FASTQ format
-
-Although it looks complicated (and it is), it's easy to understand the
-[fastq](https://en.wikipedia.org/wiki/FASTQ_format) format with a little decoding. Some rules about the format
-include...
-
-|Line|Description|
-|----|-----------|
-|1|Always begins with '@' and then information about the read|
-|2|The actual DNA sequence|
-|3|Always begins with a '+' and sometimes the same info in line 1|
-|4|Has a string of characters which represent the quality scores; must have same number of characters as line 2|
-
-We can view the first complete read in one of the files our dataset by using `head` to look at
-the first four lines.
-
-```{bash eval=FALSE}
-$ head -n4 SRR098026.fastq
-```
-
-```
-
-@SRR098026.1 HWUSI-EAS1599_1:2:1:0:968 length=35
-NNNNNNNNNNNNNNNNCNNNNNNNNNNNNNNNNNN
-+SRR098026.1 HWUSI-EAS1599_1:2:1:0:968 length=35
-!!!!!!!!!!!!!!!!#!!!!!!!!!!!!!!!!!!
-
-```
-
-
-All but one of the nucleotides in this read are unknown (`N`). This is a pretty bad read!
-
-Line 4 shows the quality for each nucleotide in the read. Quality is interpreted as the 
-probability of an incorrect base call (e.g. 1 in 10) or, equivalently, the base call 
-accuracy (eg 90%). To make it possible to line up each individual nucleotide with its quality
-score, the numerical score is converted into a code where each individual character 
-represents the numerical quality score for an individual nucleotide. For example, in the line
-above, the quality score line is: 
-
-```
-!!!!!!!!!!!!!!!!#!!!!!!!!!!!!!!!!!!
-
-```
-
-
-The `#` character and each of the `!` characters represent the encoded quality for an 
-individual nucleotide. The numerical value assigned to each of these characters depends on the 
-sequencing platform that generated the reads. The sequencing machine used to generate our data 
-uses the standard Sanger quality PHRED score encoding, using by Illumina version 1.8 onwards.
-Each character is assigned a quality score between 0 and 40 as shown in the chart below.
-
-```
-Quality encoding: !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHI
-                  |         |         |         |         |
-Quality score:    0........10........20........30........40                                
-```
-
-Each quality score represents the probability that the corresponding nucleotide call is
-incorrect. This quality score is logarithmically based, so a quality score of 10 reflects a
-base call accuracy of 90%, but a quality score of 20 reflects a base call accuracy of 99%. 
-These probability values are the results from the base calling algorithm and dependent on how 
-much signal was captured for the base incorporation. 
-
-Looking back at our read: 
-
-```
-@SRR098026.1 HWUSI-EAS1599_1:2:1:0:968 length=35
-NNNNNNNNNNNNNNNNCNNNNNNNNNNNNNNNNNN
-+SRR098026.1 HWUSI-EAS1599_1:2:1:0:968 length=35
-!!!!!!!!!!!!!!!!#!!!!!!!!!!!!!!!!!!
-
-```
-
-we can now see that the quality of each of the `N`s is 0 and the quality of the only
-nucleotide call (`C`) is also very poor (`#` = a quality score of 2). This is indeed a very
-bad read. 
-
-> ## Exercise
-> 
-> What is the last read in the `SRR098026.fastq` file? How confident
-> are you in this read? 
-> 
-
-## Quality Encodings Vary
-
- Although we've used a particular quality encoding system to demonstrate interpretation of 
- read quality, different sequencing machines use different encoding systems. This means that, 
- depending on which sequencer you use to generate your data, a `#` may not be an indicator of 
- a poor quality base call.
-
- This mainly relates to older Solexa/Illumina data,
- but it's essential that you know which sequencing platform was
- used to generate your data, so that you can tell your quality control program which encoding
- to use. If you choose the wrong encoding, you run the risk of throwing away good reads or 
- (even worse) not throwing away bad reads!
-
-## Assessing Quality using FastQC
+# Assessing Quality using FastQC
 
 In real life, you won't be assessing the quality of your reads by visually inspecting your 
 FASTQ files. Rather, you'll be using a software program to assess read quality and 
@@ -223,20 +165,6 @@ Navigate to your FASTQ dataset:
 cd ~/rnaseq_data/
 ```
 
-
-
-
-> ## Exercise
-> 
-> How many FASTQ files are in this dataset? How big are the files? 
-> (Hint: Look at the options for the `ls` command to see how to show
-> file sizes.)
->
-
-As the `fastq` files are compressed, we can't use the `cat`, `head` or `tail` commands to view the contents (try it and see what happens!). Instead we can use the command `zcat` to print the contents of the screen to the file.
-
-> ## Exercise
-> The command `zcat` can be used instead of `cat` to print the contents of a fastq file to the screen. Can you write a series of commands with a pipe `|` to print the first 4 lines of file `SRR1552444.fastq.gz` to the screen?
 
 
 To run the FastQC program, we would normally have to tell our computer where the program is located. In this particular case, FastQC has been installed in a location that can be accessed from all directories. 
