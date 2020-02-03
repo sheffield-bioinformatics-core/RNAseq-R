@@ -12,7 +12,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-(Adapted from the Data Carpentry Genomics wrangling materials at:- https://datacarpentry.org/wrangling-genomics/00-quality-control/index.html)
+(Adapted from the Data Carpentry Genomics wrangling materials at:- https://datacarpentry.org/wrangling-genomics/02-quality-control/index.html)
 
 # Bioinformatics workflows
 
@@ -97,7 +97,6 @@ ls
 
 
 
-
 ### Checking the download worked
 
 Having downloaded all your files, you should probably check they have not been corrupted in transit. A common way of doing this is to generate an *md5sum* from the file.
@@ -115,11 +114,22 @@ md5sum fastq/Sample1/Sample1.fastq
 
 
 
-### Using sharc (UoS)
+### Using sharc (**UoS-specific**)
 
-Can put files on shared drive, and it will be accessible
+The University of Sheffield has a High-performance Computing (HPC) cluster called [ShARC](https://www.sheffield.ac.uk/cics/research/hpc/sharc) that you will probably use to perform your analysis. 
 
-### Getting files from SRA?
+FTP software such as Cyberduck (Mac OSX), WinSCP (Windows) or Filezilla will allow you to connect and copy the files in a drag-and-drop manner.
+
+![](images/filezilla.png)
+
+You can also copy files to this cluster from your own machine with the secure copy (`scp`) command or `rsnyc`.
+
+```{bash eval=FALSE}
+scp read_archive.tar.gz md1mjdx@sharc.shef.ac.uk:/shared/bioinformatics_core1/Shared/work
+```
+
+Your research group may already have storage space on ShARC that is accesible from your desktop, in which case you can drag and drop files. See the UoS website for more information on this storage [https://www.sheffield.ac.uk/cics/research-storage](https://www.sheffield.ac.uk/cics/research-storage)
+
 
 # Assessing Quality using FastQC
 
