@@ -2,7 +2,7 @@
 title: "RNA-seq Analysis in R"
 subtitle: "Annotation and Visualisation of RNA-seq results"
 author: "Mark Dunning"
-date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
+date: "February 2020"
 output:
   html_notebook:
     toc: yes

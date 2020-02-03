@@ -1,7 +1,7 @@
 ---
 title: "RNA-seq analysis in R"
 author: "Mark Dunning"
-date: '`r format(Sys.time(), "Last modified: %d %b %Y")`'
+date: "February 2020"
 output:
   html_notebook:
     toc: yes
