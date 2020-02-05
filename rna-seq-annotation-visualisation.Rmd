@@ -240,7 +240,9 @@ write.csv(results.annotated,file="virgin_vs_lactation_DESeq_annotated.csv",row.n
 
 We have already seen the use of a heatmap as a quality assessment tool to visualise the relationship between samples in an experiment. Another common use-case for such a plot is to visualise the results of a differential expression analysis.
 
-Here we will take the top 10 genes from the differential expression analysis and produce a heatmap. The default colour palette goes from low expression in blue to high expression in red, which is a good alternative to the traditional red/green heatmaps which are not suitable for those with forms of colour-blindness.
+Here we will take the top 10 genes from the differential expression analysis and produce a heatmap with the `pheatmap` package. The default colour palette goes from low expression in blue to high expression in red, which is a good alternative to the traditional red/green heatmaps which are not suitable for those with forms of colour-blindness.
+
+The counts we are visualising are the *variance-stablised* counts, which are more appropriate for visualisation.
 
 ```{r}
 library(pheatmap)
@@ -272,7 +274,7 @@ pheatmap(assay(vsd)[top_genes,],
 ```
 
 
-> ## Challenge 1{.challenge}
+> ## Challenge 2{.challenge}
 > 1. Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes
 > 2. Change the plot so that gene names are displayed rather than Ensembl IDs
 > 3. Save the plot to a pdf file
@@ -306,16 +308,37 @@ table(clusters, colData(dds)$Status)
 
 ```
 
-A similar approach would also work for the genes. The key difference that we don't transpose before calculating the distance matrix. For the small number of genes in the heatmap such a distance matrix can be computed, but it may be computationally-expensive for a large number of genes.
+### Adding gene names to a volcano plot
 
-```{r fig.height=6}
-d_genes <- dist(mat)
+Now that we have an annotated table of results, we can add the gene names to some of the other plots we have created. This should be straightforward as ggplot2 has a `label` aesthetic that can be mapped to columns in a data frame. The `geom_text` plot will then display the labels. However, the following plot is a bit crowded.
 
-plot(hclust(d_genes))
-## Do clustering and split the samples into 2 groups
-rect.hclust(hclust(d_genes),k=2)
-cutree(hclust(d_genes),k = 2)
+```{r}
+## Not a good idea to run this!!
+results.annotated %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), label=SYMBOL)) + geom_point() + geom_text()
+```
 
+
+The problem here is that ggplot2 is trying to label every point with a name; not quite what we want. The trick is to create a label that is blank for most genes and only labels the points we are interested in. The `ifelse` function in R is a convenient way to set the entries in a vector based on a *logical* expression. In this case, make the values in `Label` the same as the gene symbol if the gene is in our list of "top genes". Otherwise, points get labeled with a blank string `""`.
+
+For clarity, we also make the points slightly transparent and use a different colour for the text.
+
+```{r}
+N <- 10
+top_genes <- results.annotated$ENSEMBL[1:N]
+results.annotated %>% 
+  mutate(Label = ifelse(ENSEMBL %in% top_genes, SYMBOL, "")) %>%  
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), label=Label)) + geom_point(alpha=0.4) + geom_text(col="blue")
+```
+
+Finally, a slightly better positioning of text is given by the `ggrepel` package.
+
+```{r}
+if(!require(ggrepel)) install.packages("ggrepel")
+
+results.annotated %>% 
+  mutate(Label = ifelse(ENSEMBL %in% top_genes, SYMBOL, "")) %>%  
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), label=Label)) + geom_point(alpha=0.4) + geom_text_repel(col="blue")
 ```
 
 
@@ -362,7 +385,7 @@ getBM(attributes = attributeNames,
       mart=ensembl)
 ```
 
-> ## Challenge 2{.challenge}
+> ## Challenge 3{.challenge}
 > 1. Use biomaRt to create an data frame containing the entrezgene, gene symbol and genomic coordinates (chromosome, start, end) for the Ensembl IDs in the DESeq2 results
 > 2. Remove duplicates entries from the new data frame
 > 3. Join the biomaRt annotation to the DESeq2 results to produce a data frame with differential expression results and annotation
@@ -370,6 +393,30 @@ getBM(attributes = attributeNames,
 
 ```{r}
 
+```
+
+### Obtaining gene models with Bioconductor
+
+Using biomaRt as above allows us to retrieve the genomic coordinates of a given gene. If we want more-comprehensive information about the structue of a gene (and indeed all genes in the transcriptome), we can use one of several pre-built *transcript database* packages.
+
+Retrieving the coordinates for a particular gene (or set of genes) uses the same `select` function as for the `org.Mm.eg.db` package, but checking for different `columns` and `keytypes`.
+
+```{r}
+library(TxDb.Mmusculus.UCSC.mm10.knownGene)
+txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene
+columns(txdb)
+
+AnnotationDbi::select(txdb, columns = c("EXONID","EXONSTART","EXONCHROM"),
+                      keys="22373", 
+                      keytype = "GENEID")
+```
+
+Alternatively we can grab the coordinates of all genes in a single object and then subset accordingly. This allows us to perform all kinds of subset operation using the `GenomicFeatures` framework in Bioconductor.
+
+```{r}
+exons <- exonsBy(txdb,"gene")
+exons
+exons[["22373"]]
 ```
 
 ### Interactive graphs and tables

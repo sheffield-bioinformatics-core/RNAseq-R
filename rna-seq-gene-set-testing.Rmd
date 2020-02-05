@@ -12,7 +12,7 @@ output:
 minutes: 300
 layout: page
 subtitle: Gene Set Testing for RNA-seq
-bibliography: ref.bib
+
 ---
 
 ```{r setup, include=FALSE}
@@ -84,22 +84,14 @@ names(ranks) <- gseaInput$ENTREZID
 ```
 
 
-
-```{r}
-#plot(ranks)
-barplot(ranks)
-```
-
 The Walter+Eliza Hall Institutes Bioinformatics service have made mouse versions of the MSigDB datasets available for download. This should already be available in the `Robjects` folder.
-
-
 
 ```{r}
 load("Robjects/mouse_H_v5p2.rdata")
 pathways <- Mm.H
 ```
 
-Conduct analysis:
+The analysis is one call to the `fgsea` function. We can automatically exclude any pathways with too many or too few genes.
 
 ```{r}
 library(fgsea)
@@ -143,11 +135,13 @@ plotEnrichment(pathways[["HALLMARK_OXIDATIVE_PHOSPHORYLATION"]],
 > 1. What pathway has the most extreme negative enrichment score? How can you identify this pathway from the results table?
 > 2. Make the enrichment plot for this pathway
 
+### Visualising pathways using a heatmap
 
 The names of genes involved in particular pathways can be extracted from the `pathways` object. We can then use these genes to make a heatmap, or other visualisation, to show how these genes partition the dataset.
 
 ```{r}
-library(DESeq2)
+### Load the dds object if not present
+load("Robjects/preprocessing.Rdata")
 library(pheatmap)
 my_genes <- filter(results.annotated, ENTREZID %in% pathways[["HALLMARK_MYC_TARGETS_V2"]]) %>% 
   pull(ENSEMBL)
@@ -188,8 +182,9 @@ names(genes) <- results.annotated$ENSEMBL
 
 Fit the Probability Weighting Function (PWF):
 
-```{r}
+```{r message=FALSE}
 library(goseq)
+if(!require(TxDb.Mmusculus.UCSC.mm10.knownGene)) BiocManager::install("TxDb.Mmusculus.UCSC.mm10.knownGene")
 #print(supportedGeneIDs())
 #print(supportedGenomes())
 pwf <- nullp(genes, "mm10","ensGene")
@@ -200,8 +195,14 @@ Conduct gene set enrichment analysis:
 ```{r results="hide"}
 #?goseq
 goseq_res <- goseq(pwf, "mm10","ensGene",test.cats="GO:BP")
-goseq_res
+head(goseq_res)
 ```
+
+```{r}
+?goseq
+
+```
+
 
 ## Analysis with clusterProfiler
 
