@@ -1,16 +1,17 @@
-source("http://www.bioconductor.org/biocLite.R")
-biocLite(c("limma", 
-         "edgeR", 
-         "gplots", 
+install.packages("BiocManager")
+BiocManager::install(c("limma", 
          "org.Mm.eg.db", 
          "RColorBrewer", 
-         "Rsubread",
-         "BiasedUrn",
          "TxDb.Mmusculus.UCSC.mm10.knownGene",
-         "GEOquery",
          "goseq",
          "fgsea",
          "DESeq2",
-         "pheatmap","rmarkdown",
-          "tximport","tidyverse",
-         "SRAdb"),suppressUpdates=TRUE)
+         "pheatmap",
+         "rmarkdown",
+         "tximport",
+         "clusterProfiler",
+         "DOSE",
+         "pathview",
+         "biomaRt",
+         "dplyr",
+         "ggplot2"),suppressUpdates=TRUE)
