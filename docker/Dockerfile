@@ -1,6 +1,11 @@
 FROM dorowu/ubuntu-desktop-lxde-vnc
 MAINTAINER Mark Dunning<m.j.dunning@sheffield.ac.uk>
-RUN rm -rf /var/lib/apt/lists/*
+# Do not exclude man pages & other documentation
+RUN rm /etc/dpkg/dpkg.cfg.d/excludes
+# Reinstall all currently installed packages in order to get the man pages back
+RUN apt-get update && \
+    dpkg -l | grep ^ii | cut -d' ' -f3 | xargs apt-get install -y --reinstall && \
+    rm -r /var/lib/apt/lists/*
 RUN apt-get update 
 RUN apt-get install --fix-missing -y git wget unzip
 #RUN git clone https://github.com/sheffield-bioinformatics-core/RNAseq-R.git /home/participant/Course_Materials
@@ -116,10 +121,4 @@ RUN apt-get install -y man nano
 ## Attempt to make sure we enter the environment signed-in as 'dcuser'
 RUN echo "su - dcuser >> /etc/.basrc"
 RUN echo "cd /home/dcuser >> /etc/.bashrc"
-#RUN rm /etc/dpkg/dpkg.cfg.d/excludes
-# Reinstall all currently installed packages in order to get the man pages back
-## actually, don't do this because we run out of space on the amazon machine
 
-#RUN apt-get update && \
-#    dpkg -l | grep ^ii | cut -d' ' -f3 | xargs apt-get install -y --reinstall && \
-#    rm -r /var/lib/apt/lists/*
