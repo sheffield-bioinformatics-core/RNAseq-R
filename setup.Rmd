@@ -23,7 +23,7 @@ In this course we will demonstrate how to run some standard analysis tools for R
 
 ## 2. Launch the Lab 
 
-Choose the menu option *View my labs* on the left-hand menu. The lab **Introduction to RNA-seq - Day 1** should be visible. Click the *Participate* button.
+Choose the menu option *View my labs* on the left-hand menu. The lab **Introduction to the Command Line for Bioinformatics** should be visible. Click the *Participate* button.
 
 ![](images/instance-hub1.png)
 
@@ -65,7 +65,7 @@ To open a *Terminal* (in order to enter Unix commands), there is a "Start menu" 
 
 Finally, in order to follow the materials we need to change the user that we logged in as from `root` to `dcuser`.
 
-Type the command into the terminal window exactly as it appears below
+Type the command into the terminal window **exactly** as it appears below
 
 ```
 su - dcuser
@@ -73,54 +73,6 @@ su - dcuser
 
 ![](images/change-user.png)
 
-# Course Setup for Day 2
-
-On the second day of the course we will be performing analysis in Rstudio. It would be preferable to run this locally on your own machine so everything is setup for you after the course.
-
-You will need to install the latest version of R **and** RStudio as per the instructions on the [course home page](http://sbc.shef.ac.uk/training/rna-seq-in-r-2019-01-14/#software-installation)
-
-The copy-and-paste the following R code into the R console:-
-
-```{r}
-install.packages("BiocManager")
-BiocManager::install(c("limma", 
-         "org.Mm.eg.db", 
-         "RColorBrewer", 
-         "TxDb.Mmusculus.UCSC.mm10.knownGene",
-         "goseq",
-         "fgsea",
-         "DESeq2",
-         "pheatmap",
-         "rmarkdown",
-         "tximport",
-         "clusterProfiler",
-         "DOSE",
-         "pathview",
-         "biomaRt"),update=FALSE)
-
-```
-
-![](images/install-pkgs.png)
-
-### Backup resource if local installation does not work
-
-If there are serious problems installing the course software, we also have cloud compute available. Follow steps 1 to 3 the same as for Day 1, except starting the *Introduction to RNA-seq - Day 2* lab. 
-
-![](images/day2-lab.png)
-
-Once the connection details have appeared, enter the *Connection IP* details in a web browser with `:8787` afterwards.
-
-
-e.g. 
-
-```
-3.8.181.100:8787
-```
-
-This should launch a pre-configured version of RStudio in your browser. The password is **rstudio** and the password is **sbc20190115**
-
-
-![](images/rstudio-browser.png)
 
 # Setup on your own machine
 
@@ -161,20 +113,6 @@ Entering the address in your web browser should display the environment
 http://localhost:6080
 ```
 
-### Day 2 
-
-We also have a docker container for Day 2. Install docker using the instructions above, and run the following command in a terminal or command prompt.
-
-```
-docker run --rm -e PASSWORD=password -p 8787:8787 markdunning/rnaseq-r
-```
-
-Entering the following address in a web browser should open an RStudio instance. The username is `rstudio` and the password is `password`. 
-
-```
-http://localhost:8787
-```
-The RStudio version should have all the packages pre-installed and a blank markdown file `analysis.Rmd` that you can start working through the materials with.
 
 ### Using the environment to analyse your own data
 

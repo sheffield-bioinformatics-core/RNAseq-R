@@ -12,7 +12,7 @@ output:
     toc_float: yes
 minutes: 300
 layout: page
-bibliography: ref.bib
+
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -56,7 +56,7 @@ We can now have a list of genes ordered according to their evidence for being di
 library(dplyr)
 library(tibble)
 
-results.status <- as.data.frame(results(de.mf,contrast=c("Status","lactation","virgin"))) %>% 
+results.status <- as.data.frame(results(de.mf,contrast=c("Status","lactation","virgin"))) %>%
   rownames_to_column("ENSEMBL")
   
 
@@ -98,15 +98,10 @@ head(results.ordered)
 Another common plot for displaying the results of a differential expression analysis is a *volcano plot*
 
 ```{r}
+library(ggplot2)
+results.ordered %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj))) + geom_point()
 
-plot(results.ordered$log2FoldChange, -log10(results.ordered$padj),
-     pch=16,       
-     xlab="Log Fold Change",
-       ylab="Significance")
-degenes <- which(results.ordered$padj < 0.05)
-points(results.ordered$log2FoldChange[degenes],-log10(results.ordered$padj)[degenes],
-       col="red",
-       pch=16)
 ```
 
 
@@ -115,6 +110,17 @@ It can also be useful to examine the counts of reads for a single gene across th
 ```{r}
 plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"))
 ```
+
+
+> ## Challenge 1 {.challenge}
+>
+> 1. Repeat the same plot as above but with the added argument `returnData=TRUE` 
+> e.g. `plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"))`
+> 2. You should now be able to visualise these data in `ggplot2` to make a more attractive plot
+> 3. Repeat the volcano plot from above, but use a different colour to indicate which genes are significant with an adjusted p-value less than 0.05
+
+![](images/counts_ggplot.png)
+
 
 
 However, it is hard to assess the biological significance of such a gene without more information about . To perform such a task we need to map between the identifiers we have in the `DESeq2` output and more familiar names.
@@ -127,10 +133,10 @@ There are a number of ways to add annotation, but we will demonstrate how to do 
 
 ```{r eval=FALSE}
 ### Only execute when you need to install the package
-source("http://www.bioconductor.org/biocLite.R")
-biocLite("org.Mm.eg.db")
+install.packages("BiocManager")
+BiocManager::install("org.Mm.eg.db")
 # For Human
-biocLite("org.Hs.eg.db")
+BiocManager::install("org.Hs.eg.db")
 ```
 
 The packages are larger in size that Bioconductor software pacakges, but essentially they are databases that can be used to make *offline* queries. 
@@ -167,14 +173,13 @@ select(org.Mm.eg.db, keys="ENSMUSG00000000381",
        keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME")
 )
 
-
-### In case of errors, try
-### AnnotationDBI::select(org.Mm.eg.db, keys="ENSMUSG00000000381",keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME")
-
-
-
 ```
 
+Unfortunately, the authors of `dplyr` and `AnnotationDbi` have both decided to use the name `select` in their packages. To avoid confusion, the following code is sometimes used:-
+
+```{r}
+AnnotationDbi::select(org.Mm.eg.db, keys="ENSMUSG00000000381",keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME"))
+```
 
 
 To annotate our results, we definitely want gene symbols and perhaps the full gene name. Let's build up our annotation information into a new data frame using the `select` function.
@@ -184,7 +189,7 @@ anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
               columns=c("SYMBOL","GENENAME"),
               keytype="ENSEMBL")
 # Have a look at the annotation
-anno
+head(anno)
 
 ```
 
@@ -200,7 +205,7 @@ Such duplicated entries can be identified using the `duplicated` function.
 ```{r}
 dup_ids <- anno$ENSEMBL[duplicated(anno$ENSEMBL)]
 filter(anno, ENSEMBL %in% dup_ids) %>% 
-  arrange(ENSEMBL)
+  arrange(ENSEMBL) %>% head
 
 ```
 
@@ -219,7 +224,7 @@ We can bind in the annotation information to the `results` data frame.
 
 ```{r}
 results.annotated <- left_join(results.ordered, anno,by="ENSEMBL")
-results.annotated
+head(results.annotated)
 
 ```
 
@@ -231,14 +236,9 @@ write.csv(results.annotated,file="virgin_vs_lactation_DESeq_annotated.csv",row.n
 ```
 
 
-The gene names that we have discovered can now be added to any plots that we have created. However, we still have to use the Ensembl IDs when accessing the `DESeqDataSet` object.
-
-```{r}
-plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"),main="Wap")
-```
 
 
-We have already seen the use of a heatmap as a quality assessment tool to visualise the relationship between samples in an experiment. Another common use-case for such a plot is to visualise the results of a differential expression analysis....
+We have already seen the use of a heatmap as a quality assessment tool to visualise the relationship between samples in an experiment. Another common use-case for such a plot is to visualise the results of a differential expression analysis.
 
 Here we will take the top 10 genes from the differential expression analysis and produce a heatmap. The default colour palette goes from low expression in blue to high expression in red, which is a good alternative to the traditional red/green heatmaps which are not suitable for those with forms of colour-blindness.
 
@@ -346,7 +346,7 @@ listFilters(ensembl) %>%
 ```
 
 
-```{r}
+```{r eval=FALSE}
 listAttributes(ensembl) %>% 
     filter(grepl("gene",name))
 ```
@@ -354,7 +354,7 @@ listAttributes(ensembl) %>%
 An advantage over the `org..` packages is that positional information can be retrieved
 
 ```{r}
-attributeNames <- c('ensembl_gene_id', 'entrezgene', 'external_gene_name')
+attributeNames <- c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name')
 
 getBM(attributes = attributeNames,
       filters = "ensembl_gene_id",
@@ -411,68 +411,4 @@ glMDPlot(results,
          side.main = "ENSEMBL")
 ```
 
-
-### Brief Introduction to ggplot2
-
-The [`ggplot2`](http://ggplot2.tidyverse.org/) package has emerged as an attractive alternative to the traditional plots provided by base R. A full overview of all capabilities of the package is available from the [cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf).
-
-The `plotCounts` function that we saw earlier can be adjusted to return the data associated with the plot, which in-turn can be passed to a `ggplot2` function for customisable plots.
-
-- `plot_data` is our data frame containing the variables we wish to plot
-- `aes` creates a mpping between the variables in our data frame to the *aes*thetic proprties of the plot
-    + the x-axis is mapped to `Status`, y-axis is mapped to `count`
-- `geom_point` specifies the particular type of plot we want (in this case a scatter plot)
-    + see [the cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf) for other plot types
-
-
-```{r}
-library(ggplot2)
-plot_data <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("CellType","Status"),returnData = TRUE)
-plot_data
-
-ggplot(plot_data, aes(x = Status,y=log2(count),col=CellType)) + geom_point()
-```
-
-```{r}
-ggplot(plot_data, aes(x = Status,y=log2(count),col=Status)) + geom_point()  + facet_wrap(~CellType)
-```
-
-
-
-A simple scatter plot, equivalent to `plotMA` from before, can be generated as follows:-
-
-```{r,fig.width=12,fig.height=5}
-library(ggplot2)
-df <- results.annotated
-ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point() 
-
-```
-
-In brief:-
-
-
-The real advantage of `ggplot2` is the ability to change the appearance of our plot by mapping other variables to aspects of the plot. For example, we could colour the points based on a p-value cut-off. The colours are automatically chosen by `ggplot2`, but we can specifiy particular values.
-
-```{r,fig.width=12,fig.height=5}
-
-ggplot(df, aes(x = log2(baseMean), y=log2FoldChange,col=padj<0.05)) + geom_point() 
-
-ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point(aes(color=padj<0.05),alpha=0.4) +  scale_colour_manual(values=c("black","red"))
-
-```
-
-Text can also be added to the plot to indicate the names of particular genes of interest. A column can be added to the data frame used for plotting with a text label that can be associated with each position on the plot. The plot would quickly become too cluttered if we added too many labels, but we can put empty strings `""` for genes that we don't want to plot.
-
-
-```{r fig.wdith=12}
-N <- 10
-
-top_genes <- df$ENSEMBL[1:N]
-
-df<- mutate(df, Label=ifelse(df$ENSEMBL %in% top_genes, SYMBOL, ""))
-
-ggplot(df, aes(x = log2(baseMean), y=log2FoldChange)) + geom_point(aes(color=padj<0.05),alpha=0.4,size=0.5) +  scale_colour_manual(values=c("black","red")) +  geom_text(aes(label=Label),col="blue",alpha=0.8)
-
-
-```
 
