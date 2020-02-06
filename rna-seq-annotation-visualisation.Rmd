@@ -15,7 +15,9 @@ layout: page
 
 ---
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,fig.width = 12,message=FALSE,warning=FALSE)
+library(dplyr)
+
 ```
 
 **Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
@@ -43,10 +45,11 @@ load("Robjects/preprocessing.Rdata")
 # Overview
 
 - Visualising DE results
-- Getting annotation
+- Getting annotation using Bioconductor databases
+- Getting annotation using BiomaRt
+- Customising RNA-seq plots with `ggplot2`
 - Retrieving gene models
-- Exporting browser traecks
-- Visualising results with respect to genomic location
+
 
 
 
@@ -111,16 +114,28 @@ It can also be useful to examine the counts of reads for a single gene across th
 plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"))
 ```
 
+If we want greater control over how to visualise the data, we can use the `plotCounts` function to return the count data, but not actually produce the plot:-
+
+```{r}
+plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"),returnData=TRUE)
+```
+
 
 > ## Challenge 1 {.challenge}
 >
-> 1. Repeat the same plot as above but with the added argument `returnData=TRUE` 
-> e.g. `plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"))`
-> 2. You should now be able to visualise these data in `ggplot2` to make a more attractive plot
-> 3. Repeat the volcano plot from above, but use a different colour to indicate which genes are significant with an adjusted p-value less than 0.05
+> 1. Use the option `returnData=TRUE` to get a data frame containing the counts of `ENSMUSG00000000381` in the different development stages. Visualise these data using `ggplot2` (see plot A below). 
+> 2. Repeat the volcano plot from above, but use a different colour to indicate which genes are significant with an adjusted p-value less than 0.05. See plot B below
+> 3. (Optional) The argument `intgroup=` can be used to retrieve and plot data from multiple variables of interest in the data. Use the value `intgroup=c("Status","CellType")` and compare the counts between different cell types and status. See plot C below.
 
-![](images/counts_ggplot.png)
+```{r echo=FALSE}
+p1 <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData = TRUE) %>%   ggplot(aes(x = Status, y = count,col=Status)) + geom_jitter(width=0.1) 
+p2 <- results.ordered %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), col=padj < 0.05)) + geom_point()
+p3 <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData = TRUE) %>%   ggplot(aes(x = Status, y = count,col=Status)) + geom_jitter(width=0.1) + facet_wrap(~CellType)
 
+cowplot::plot_grid(p1,p2,p3,labels=LETTERS[1:3])
+
+```
 
 
 However, it is hard to assess the biological significance of such a gene without more information about . To perform such a task we need to map between the identifiers we have in the `DESeq2` output and more familiar names.
