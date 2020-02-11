@@ -27,7 +27,7 @@ The first workflow has been more prevalent in the literature to date, but is mor
 
 We will demonstrate both methods, but for further analysis in R we will use counts that have been generated with `salmon`. 
 
-A much reduced dataset will be used for illustration although the commands used 
+A much reduced dataset will be used for illustration although the commands used can applied to more-realistic sizes of data.
 
 We first make sure that we are located in the directory with our fastq files
 
@@ -40,9 +40,9 @@ We will need some reference data for the alignment, and a good place to obtain t
 
 Links to downloads for a variety of different organisms can be found at https://www.ensembl.org/info/data/ftp/index.html. We can navigate to the particular organism we are interested in through the interface and download the transcript and genome sequences to our laptop. However, we need the reference files to be present on the remote server that we are performing the analysis on.
 
-The command `wget` can be used to download a file from an FTP site to a local directory if you know the path to the file (URL). This path could be obtained by first locating the file in Ensbeml and right-clicking to copy the link address.
+The command `wget` can be used to download a file from an FTP site to a local directory if you know the path to the file (URL). This path could be obtained by first locating the file in Ensembl and right-clicking to copy the link address.
 
-The following commands should download reference data from Ensembl into the `ref_data` folder that we have just created. For 
+The following commands should download reference data from Ensembl into a newly-created `ref_data` folder. It is good practice to keep your referenrce data stored in a sub-folder. *However, check first (with I.T or local Bioinformaticians that you don't have a local copy of reference genomes on your file system*
 
 ```{bash eval=FALSE}
 mkdir ref_data
@@ -60,7 +60,7 @@ suggested for the alignment in the new Tuxedo
 protocol (https://doi.org/10.1038/nprot.2016.095) and it requires an indexed genome to keep its memory footprint small and the running
 time short. 
 
-The program creates a genome index simply by using the *FASTA* file of the
+The program creates a genome index by using the *FASTA* file of the
 sequence we want to use as reference. A sequence in *FASTA* format begins with a single-line
 description, followed by lines of sequence data. The description line is distinguished from the
 sequence data by a greater-than (`>`) symbol at the beginning.
@@ -273,7 +273,7 @@ salmon quant -i index/GRCm38_salmon --libType A -r SRR1552444.fastq.gz -o quant/
 > ## Exercise
 > 
 > Navigate to the quant folder and explore the files that salmon has created.
-> What file contains the quantifications? What are the various columns? Which transcript has the most reads?
+> What file contains the quantifications? 
 > Use the salmon documentation to understand the various output files https://salmon.readthedocs.io/en/latest/file_formats.html#fileformats
 
 ### Running for all samples

@@ -14,6 +14,17 @@ knitr::opts_chunk$set(echo = TRUE)
 
 (Adapted from the Data Carpentry Genomics wrangling materials at:- https://datacarpentry.org/wrangling-genomics/02-quality-control/index.html)
 
+# Overview
+
+Covered in this section
+
+- Using the command line to download files
+- Compression and de-compression of files
+- Verifying that a download was completed
+- Quality assessment of raw sequencing data
+- Compiling multiple QC reports into a single file
+
+
 # Bioinformatics workflows
 
 When working with high-throughput sequencing data, the raw reads you get off of the sequencer will need to pass
@@ -37,6 +48,7 @@ makes this feasible. Standards ensure that data is stored in a way that is gener
 within the community. The tools that are used to analyze data at different stages of the workflow are therefore 
 built under the assumption that the data will be provided in a specific format.  
 
+**Although we are using RNA-seq as a case study, the initial steps for other NGS technologies are highly-similar**
 
 # Obtaining raw reads
 
@@ -120,7 +132,6 @@ The University of Sheffield has a High-performance Computing (HPC) cluster calle
 
 FTP software such as Cyberduck (Mac OSX), WinSCP (Windows) or Filezilla will allow you to connect and copy the files in a drag-and-drop manner.
 
-![](images/filezilla.png)
 
 You can also copy files to this cluster from your own machine with the secure copy (`scp`) command or `rsnyc`.
 
