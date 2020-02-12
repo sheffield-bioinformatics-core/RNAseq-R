@@ -1,4 +1,4 @@
-install.packages("BiocManager")
+if(!require(BiocManager)) install.packages("BiocManager")
 BiocManager::install(c("limma", 
          "org.Mm.eg.db", 
          "RColorBrewer", 
