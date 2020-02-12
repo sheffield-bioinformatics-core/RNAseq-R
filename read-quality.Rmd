@@ -69,7 +69,7 @@ If your data are hosted on a website or FTP site, you can use the `wget` command
 Note that if downloading from an FTP site you might be prompted for a username and password.
 
 ```{bash eval=FALSE}
-wget http://sbc.shef.ac.uk/example_reads.fastq
+wget http://sbc.shef.ac.uk/data/example_reads.fastq
 ls -lh
 ```
 
