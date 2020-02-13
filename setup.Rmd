@@ -76,6 +76,8 @@ su - dcuser
 
 # Setup on your own machine
 
+Both Mac OSX and Windows 10 have the ability to run some of the commands presented in this course to navigate around a file system, copy files and list directories. However, you may prefer to practice in a "safe" environment, such as that used during the workshop. Furthermore, the NGS tools presented may be difficult to install. 
+
 You can launch the same computing environment on your own machine using a tool called *Docker*.
 
 Docker is an open platform for developers to build and ship applications, whether on laptops, servers in a data center, or the cloud.
@@ -132,4 +134,56 @@ At the terminal, we should be able to see our files with the `ls` command
 ls /home/dcuser/rnaseq_data
 ```
 
+### Analysis on the UoS cluster
+
+As described above, `docker` can be used to run the environment presented in this course on a personal laptop. However, there are some security implications of docker that prohibits it being installed on a high-performance computing system. An alternative is `singularity`, which allows computing environments to be distributed as a single image file. We have created such a singularity image and made it available on sharc (The University of Sheffield's HPC).
+
+Firstly, login to sharc in the usual manner and then open an interactive shell.
+
+```{bash eval=FALSE}
+ssh USERNAME@sharc.shef.ac.uk
+qrsh
+```
+
+The singularity image is available at the following location:-
+
+```{bash eval=FALSE}
+ls /shared/bioinformatics_core1/Shared/software/singularity/command_line_20200212.sif
+```
+
+**The commands presented in the Introduction to Shell section (e.g. `ls`, `cd`, `pwd`...) are already available when you first login to `sharc`**. However, the tools specific to NGS analysis will require you to add the path to the singularity image before the command.
+
+For example, to run `fastqc` you can navigate to your directory containing your fastq files with the usual `cd` command.
+
+```{bash eval=FALSE}
+cd /path/to/your/fastq/files
+singularity exec /shared/bioinformatics_core1/Shared/software/singularity/command_line_20200212.sif fastqc *.fastq.gz
+```
+
+Other commands that require you to list give the path to the singularity image are as follows:-
+
+```{bash eval=FALSE}
+singularity exec /shared/bioinformatics_core1/Shared/software/singularity/command_line_20200212.sif multiqc
+```
+
+```{bash eval=FALSE}
+singularity exec /shared/bioinformatics_core1/Shared/software/singularity/command_line_20200212.sif hisat2-build
+```
+
+
+```{bash eval=FALSE}
+singularity exec /shared/bioinformatics_core1/Shared/software/singularity/command_line_20200212.sif hisat2 
+```
+
+```{bash eval=FALSE}
+singularity exec /shared/bioinformatics_core1/Shared/software/singularity/command_line_20200212.sif samtools 
+```
+
+```{bash eval=FALSE}
+singularity exec /shared/bioinformatics_core1/Shared/software/singularity/command_line_20200212.sif featureCounts
+```
+
+```{bash eval=FALSE}
+singularity exec /shared/bioinformatics_core1/Shared/software/singularity/command_line_20200212.sif salmon
+```
 
