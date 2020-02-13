@@ -126,12 +126,13 @@ plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"),returnData=TRUE)
 > 1. Use the option `returnData=TRUE` to get a data frame containing the counts of `ENSMUSG00000000381` in the different development stages. Visualise these data using `ggplot2` (see plot A below). 
 > 2. Repeat the volcano plot from above, but use a different colour to indicate which genes are significant with an adjusted p-value less than 0.05. See plot B below
 > 3. (Optional) The argument `intgroup=` can be used to retrieve and plot data from multiple variables of interest in the data. Use the value `intgroup=c("Status","CellType")` and compare the counts between different cell types and status. See plot C below.
+> HINT: To get the counts on the same scale as displayed by the plotCounts function you will need to add `+scale_y_log10` in your ggplot2 code
 
 ```{r echo=FALSE}
-p1 <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData = TRUE) %>%   ggplot(aes(x = Status, y = count,col=Status)) + geom_jitter(width=0.1) 
+p1 <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData = TRUE) %>%   ggplot(aes(x = Status, y = count,col=Status)) + geom_jitter(width=0.1) + scale_y_log10()
 p2 <- results.ordered %>% 
   ggplot(aes(x = log2FoldChange, y = -log10(padj), col=padj < 0.05)) + geom_point()
-p3 <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData = TRUE) %>%   ggplot(aes(x = Status, y = count,col=Status)) + geom_jitter(width=0.1) + facet_wrap(~CellType)
+p3 <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData = TRUE) %>%   ggplot(aes(x = Status, y = count,col=Status)) + geom_jitter(width=0.1) + facet_wrap(~CellType) + scale_y_log10()
 
 cowplot::plot_grid(p1,p2,p3,labels=LETTERS[1:3])
 
@@ -290,7 +291,7 @@ pheatmap(assay(vsd)[top_genes,],
 
 
 > ## Challenge 2{.challenge}
-> 1. Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes
+> 1. Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes **between pregnant and luminal**
 > 2. Change the plot so that gene names are displayed rather than Ensembl IDs
 > 3. Save the plot to a pdf file
 > HINT: check the help for the `pheatmap` function to see how column and row labels can be changed
