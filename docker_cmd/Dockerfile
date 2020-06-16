@@ -70,6 +70,14 @@ WORKDIR RSEM-1.3.1
 RUN make
 RUN make install 
 
+## STAR
+
+WORKDIR /opt
+
+RUN git clone https://github.com/alexdobin/STAR.git
+WORKDIR STAR/source
+RUN make
+
 ## Tidy up to remove temporary files etc
 
 RUN rm /opt/*.zip
