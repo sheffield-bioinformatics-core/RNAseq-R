@@ -22,10 +22,10 @@ RUN gunzip sratoolkit.2.8.1-3-ubuntu64.tar.gz
 RUN tar xvf sratoolkit.2.8.1-3-ubuntu64.tar
 RUN ln -s /tmp/sratoolkit.2.8.1-3-ubuntu64/bin/* /usr/bin/
 
-RUN wget https://github.com/COMBINE-lab/salmon/releases/download/v0.11.0/salmon-0.11.0-linux_x86_64.tar.gz
-RUN tar xvzf salmon-0.11.0-linux_x86_64.tar.gz
-RUN chmod +x /tmp/salmon-0.11.0-linux_x86_64/bin/salmon
-RUN ln -s /tmp/salmon-0.11.0-linux_x86_64/bin/salmon /usr/bin
+RUN wget https://github.com/COMBINE-lab/salmon/releases/download/v1.2.1/salmon-1.2.1_linux_x86_64.tar.gz
+RUN tar xvzf salmon-1.2.1-linux_x86_64.tar.gz
+RUN chmod +x /tmp/salmon-1.2.1-linux_x86_64/bin/salmon
+RUN ln -s /tmp/salmon-1.2.1-linux_x86_64/bin/salmon /usr/bin
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python get-pip.py
 RUN pip install multiqc
