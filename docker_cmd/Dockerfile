@@ -22,19 +22,21 @@ RUN gunzip sratoolkit.2.8.1-3-ubuntu64.tar.gz
 RUN tar xvf sratoolkit.2.8.1-3-ubuntu64.tar
 RUN ln -s /opt/sratoolkit.2.8.1-3-ubuntu64/bin/* /usr/bin/
 
-RUN wget https://github.com/COMBINE-lab/salmon/releases/download/v0.11.0/salmon-0.11.0-linux_x86_64.tar.gz
-RUN tar xvzf salmon-0.11.0-linux_x86_64.tar.gz
-RUN chmod +x /opt/salmon-0.11.0-linux_x86_64/bin/salmon
-RUN ln -s /opt/salmon-0.11.0-linux_x86_64/bin/salmon /usr/bin
+RUN wget https://github.com/COMBINE-lab/salmon/releases/download/v1.2.1/salmon-1.2.1_linux_x86_64.tar.gz
+RUN ls
+RUN tar xvzf salmon-1.2.1_linux_x86_64.tar.gz
+
+RUN chmod +x /opt/salmon-latest_linux_x86_64/bin/salmon
+RUN ln -s /opt/salmon-latest_linux_x86_64/bin/salmon /usr/bin
+
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python get-pip.py
 RUN pip install multiqc
 RUN pip install cython
-RUN pip install --user --upgrade cutadapt
+RUN pip install cutadapt
 RUN pip install HTSeq
 
-RUN chmod +x ~/.local/bin/cutadapt
-RUN ln -s ~/.local/bin/cutadapt /usr/bin/cutadapt
+
 RUN wget http://ccb.jhu.edu/software/hisat2/dl/hisat2-2.1.0-Linux_x86_64.zip
 RUN unzip hisat2-2.1.0-Linux_x86_64.zip
 RUN ln -s /opt/hisat2-2.1.0/hisat2 /usr/bin
@@ -74,15 +76,40 @@ RUN make install
 
 WORKDIR /opt
 
-RUN git clone https://github.com/alexdobin/STAR.git
-WORKDIR STAR/source
+RUN wget https://github.com/alexdobin/STAR/archive/2.7.5a.tar.gz
+RUN tar -xzf 2.7.5a.tar.gz
+WORKDIR STAR-2.7.5a/source
+#RUN make
+RUN ln -s /opt/STAR-2.7.5a/bin/Linux_x86_64/STAR /usr/bin
+
+## picard tools
+
+WORKDIR /opt
+RUN wget https://github.com/broadinstitute/picard/releases/download/2.23.0/picard.jar
+#ENV PICARD /opt/picard.jar
+
+## minimap2
+
+WORKDIR /opt
+RUN git clone https://github.com/lh3/minimap2
+WORKDIR minimap2
 RUN make
+RUN ln -s /opt/minimap2/minimap2 /usr/bin
+
+## seqtk
+
+WORKDIR /opt
+RUN git clone https://github.com/lh3/seqtk.git
+WORKDIR seqtk
+RUN make
+RUN ln -s /opt/seqtk/seqtk /usr/bin
 
 ## Tidy up to remove temporary files etc
 
 RUN rm /opt/*.zip
 RUN rm /opt/*.tar
 RUN rm /opt/*.tar.gz
+
 
 WORKDIR /
 
